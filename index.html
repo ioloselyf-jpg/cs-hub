@@ -887,8 +887,11 @@ function renderTemps(app){
       const trow=el('div','temp-row')
       const tw=el('div','temp-wrap')
       const tinp=el('input','temp-inp'+(s!=='empty'?' '+s:''))
-      tinp.type='text';tinp.inputMode='decimal';tinp.placeholder='0.0'
-      tinp.value=val!==undefined?val:''
+      tinp.type='text';tinp.inputMode='decimal'
+      tinp.placeholder=unit.type==='freezer'?'-0.0':'0.0'
+      // Default freezers to '-' so Android users don't need to find the minus key
+      if(val===undefined&&unit.type==='freezer')T.readings[uid]='-'
+      tinp.value=unit.type==='freezer'&&(val===undefined||val==='')?'-':val!==undefined?val:''
       if(isLogged)tinp.disabled=true
       tinp.oninput=e=>{
         const raw=e.target.value
@@ -898,7 +901,7 @@ function renderTemps(app){
           const ni=card.querySelector('.temp-inp')
           if(ni){ni.focus();const l=raw.length;try{ni.setSelectionRange(l,l)}catch(e){}}
         } else {
-          e.target.value=T.readings[uid]!==undefined?T.readings[uid]:''
+          e.target.value=T.readings[uid]!==undefined?T.readings[uid]:unit.type==='freezer'?'-':''
         }
       }
       const tu=el('span','temp-unit');tu.textContent='°C'
