@@ -333,6 +333,18 @@ body{background:#000;color:#fff;font-family:'Barlow',sans-serif;min-height:100vh
 .item-costs{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
 .icost-note{font-size:0.57rem;color:#bbb;margin-top:3px;font-style:italic;line-height:1.4}
 
+
+/* TEMP HISTORY */
+.hist-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.export-btn{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;padding:9px 16px;background:none;border:1px solid #c8102e;color:#c8102e;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.export-btn:hover{background:#c8102e;color:#fff}
+.temp-history-table{width:100%;border-collapse:collapse;font-size:0.73rem}
+.temp-history-table th{font-family:'Barlow Condensed',sans-serif;font-size:0.56rem;letter-spacing:2px;text-transform:uppercase;padding:8px 10px;background:#0d0d0d;color:#aaa;border-bottom:1px solid #1a1a1a;text-align:left;white-space:nowrap}
+.temp-history-table td{padding:8px 10px;border-bottom:1px solid #0a0a0a;color:#ccc;vertical-align:top}
+.temp-history-table tr:hover td{background:#0a0a0a}
+.td-ok{color:#4caf50;font-weight:700}.td-warn{color:#ff9800;font-weight:700}.td-danger{color:#c8102e;font-weight:700}
+.no-hist{text-align:center;padding:48px 20px;font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;letter-spacing:3px;text-transform:uppercase;color:#333}
+
 @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}.fu{animation:fadeUp 0.2s ease}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}.pulse{animation:pulse 1.5s infinite}
 
@@ -379,7 +391,7 @@ let G={
   // Compliance
   comp:{tab:'food',openSecs:{},checked:{},actuals:{},costOpen:true},
   // Temps
-  temps:{tab:'kitchen',session:'Opening',staffName:'',readings:{},actions:{},submitted:{},unitHist:{}},
+  temps:{tab:'kitchen',session:'Opening',staffName:'',readings:{},actions:{},submitted:{},unitHist:{},history:[],historyDate:new Date().toISOString().split('T')[0],historyFilter:''},
   // Fire
   fire:{tab:'assess',openSecs:{premises:true},responses:{},premNotes:{},assessorName:'',assessorRole:'',assessorDate:new Date().toISOString().split('T')[0],reviewDate:'',files:{},scanning:false,scanErr:null,saving:false},
   // Training
@@ -832,17 +844,24 @@ function renderTemps(app){
 
   // Tabs
   const tabs=el('div','tabs')
-  ;[['kitchen','🍳 Kitchen'],['bar','🍺 Bar']].forEach(([key,label])=>{
+  ;[['kitchen','🍳 Kitchen',''],['bar','🍺 Bar',''],['history','📋 History','']].forEach(([key,label,sub2])=>{
     const t=el('button','tab'+(T.tab===key?' on':''))
-    const items=UNITS.filter(u=>u.area===key)
-    const d=items.filter(u=>T.submitted[u.id]).length
-    t.innerHTML=`${label}<span class="tab-ct">${d}/${items.length} logged</span>`
-    t.onclick=()=>{T.tab=key;render()};tabs.appendChild(t)
+    if(key==='kitchen'||key==='bar'){
+      const items=UNITS.filter(u=>u.area===key)
+      const d=items.filter(u=>T.submitted[u.id]).length
+      t.innerHTML=`${label}<span class="tab-ct">${d}/${items.length} logged</span>`
+      t.onclick=()=>{T.tab=key;render()}
+    } else {
+      t.innerHTML=`${label}<span class="tab-ct">Date picker + CSV</span>`
+      t.onclick=()=>{T.tab=key;loadTempHistory();render()}
+    }
+    tabs.appendChild(t)
   })
 
   app.appendChild(sbar);app.appendChild(tabs)
 
   const main=el('div','section-wrap')
+
   const grid=el('div','unit-grid')
 
   units.forEach(unit=>{
@@ -917,6 +936,13 @@ function renderTemps(app){
   })
   main.appendChild(grid);app.appendChild(main)
 
+  // History tab
+  if(T.tab==='history'){
+    renderTempHistoryTab(main,T)
+    app.appendChild(main)
+    return
+  }
+
   // Submit bar
   const subbar=el('div','submit-bar')
   const sum=el('div','submit-sum')
@@ -958,6 +984,82 @@ async function logAllTemps(units){
   if(error){alert('Error: '+error.message);return}
   rows.forEach(r=>{T.submitted[r.unit_id]=true;if(!T.unitHist[r.unit_id])T.unitHist[r.unit_id]=[];T.unitHist[r.unit_id].unshift(r)})
   render()
+}
+
+
+// ============================================================
+// TEMP HISTORY + EXPORT
+// ============================================================
+function renderTempHistoryTab(main, T){
+  // Filters bar
+  const filters=el('div','hist-filters')
+
+  const dl=el('span','session-lbl');dl.textContent='Date:'
+  const di=el('input','txt-input');di.type='date';di.value=T.historyDate;di.style.cssText='max-width:160px;font-size:0.75rem;padding:7px 9px'
+  di.onchange=e=>{T.historyDate=e.target.value;loadTempHistory()}
+
+  const sl=el('span','session-lbl');sl.textContent='Search:'
+  const si=el('input','txt-input');si.type='text';si.placeholder='Unit or staff…';si.value=T.historyFilter;si.style.cssText='max-width:200px;font-size:0.75rem;padding:7px 9px'
+  si.oninput=e=>{T.historyFilter=e.target.value;render()}
+
+  const eb=el('button','export-btn');eb.textContent='⬇ Export CSV';eb.onclick=exportTempCSV
+
+  filters.appendChild(dl);filters.appendChild(di);filters.appendChild(sl);filters.appendChild(si);filters.appendChild(eb)
+  main.appendChild(filters)
+
+  const logs=(T.history||[]).filter(l=>
+    !T.historyFilter||
+    l.unit_name.toLowerCase().includes(T.historyFilter.toLowerCase())||
+    (l.staff_name||'').toLowerCase().includes(T.historyFilter.toLowerCase())
+  )
+
+  if(!logs.length){
+    const empty=el('div','no-hist');empty.textContent='No logs found for this date.'
+    main.appendChild(empty);return
+  }
+
+  const wrap=el('div');wrap.style.cssText='overflow-x:auto'
+  const tbl=el('table','temp-history-table')
+  tbl.innerHTML=`<thead><tr><th>Time</th><th>Session</th><th>Area</th><th>Unit</th><th>Temp</th><th>Status</th><th>Staff</th><th>Action Taken</th></tr></thead>`
+  const tbody=document.createElement('tbody')
+  logs.forEach(l=>{
+    const unit=UNITS.find(u=>u.id===l.unit_id)||{type:'fridge',max:5,warn:7}
+    const s=getTempStatus(unit,l.temperature)
+    const tr=document.createElement('tr')
+    tr.innerHTML=`<td>${new Date(l.logged_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</td><td>${l.session}</td><td style="text-transform:capitalize">${l.area}</td><td>${l.unit_name}</td><td class="${s==='ok'?'td-ok':s==='warn'?'td-warn':'td-danger'}">${l.temperature}°C</td><td class="${s==='ok'?'td-ok':s==='warn'?'td-warn':'td-danger'}">${s==='ok'?'OK':s==='warn'?'CHECK':'ACTION REQ.'}</td><td>${l.staff_name||'—'}</td><td style="color:#aaa;max-width:200px">${l.corrective_action||'—'}</td>`
+    tbody.appendChild(tr)
+  })
+  tbl.appendChild(tbody);wrap.appendChild(tbl);main.appendChild(wrap)
+}
+
+async function loadTempHistory(){
+  const T=G.temps
+  const{data}=await db.from('temperature_logs').select('*').eq('log_date',T.historyDate).order('logged_at',{ascending:false})
+  T.history=data||[];render()
+}
+
+function exportTempCSV(){
+  const T=G.temps
+  const logs=T.history||[]
+  if(!logs.length){alert('No logs to export for this date.');return}
+  const headers=['Date','Time','Area','Unit','Session','Temperature (C)','Status','Staff','Corrective Action']
+  const rows=logs.map(l=>{
+    const unit=UNITS.find(u=>u.id===l.unit_id)||{type:'fridge',max:5,warn:7}
+    const s=getTempStatus(unit,l.temperature)
+    return[
+      new Date(l.logged_at).toLocaleDateString('en-GB'),
+      new Date(l.logged_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+      l.area,l.unit_name,l.session,l.temperature,
+      s==='ok'?'OK':s==='warn'?'CHECK':'ACTION REQUIRED',
+      l.staff_name||'',l.corrective_action||''
+    ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')
+  })
+  const csv=[headers.join(','),...rows].join('\n')
+  const blob=new Blob([csv],{type:'text/csv'})
+  const url=URL.createObjectURL(blob)
+  const a=document.createElement('a')
+  a.href=url;a.download=`chip-shop-temps-${T.historyDate}.csv`;a.click()
+  URL.revokeObjectURL(url)
 }
 
 // ============================================================
