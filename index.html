@@ -846,68 +846,74 @@ function renderTemps(app){
   const grid=el('div','unit-grid')
 
   units.forEach(unit=>{
-    const val=T.readings[unit.id]
-    const action=T.actions[unit.id]||''
-    const s=getTempStatus(unit,val)
-    const isLogged=!!T.submitted[unit.id]
-    const card=el('div','unit-card'+(s!=='empty'?' '+s:''))
+    const uid=unit.id
+    const card=el('div','unit-card')
+    grid.appendChild(card)
 
-    const uhdr=el('div','unit-hdr')
-    uhdr.innerHTML=`<div class="unit-name">${unit.num} — ${unit.name}</div><div class="unit-type">${unit.area} · ${unit.type}</div><div class="unit-limit">${unit.type==='freezer'?'Legal max: -18°C':'Legal max: 8°C'} · Target: ≤${unit.max}°C</div>`
-    card.appendChild(uhdr)
+    function refreshCard(){
+      const val=T.readings[uid]
+      const isLogged=!!T.submitted[uid]
+      const s=getTempStatus(unit,val)
+      const hasVal=val!==undefined&&val!==''&&val!=='-'
 
-    const ubody=el('div','unit-body')
-    // Declare logbtn and chip early so oninput can reference them
-    const logbtn=el('button','log-btn'+(isLogged?' logged':''))
-    const chip=el('div','status-chip')
+      card.className='unit-card'+(s!=='empty'?' '+s:'')
+      card.innerHTML=''
 
-    function updateChip(st){
-      chip.className='status-chip '+(st==='ok'?'chip-ok':st==='warn'?'chip-warn':st==='danger'?'chip-danger':'chip-empty')
-      chip.textContent=st==='ok'?'✓ OK':st==='warn'?'⚠ CHECK':st==='danger'?'✕ ACTION':'—'
-    }
-    updateChip(s)
+      const uhdr=el('div','unit-hdr')
+      uhdr.innerHTML=`<div class="unit-name">${unit.num} — ${unit.name}</div><div class="unit-type">${unit.area} · ${unit.type}</div><div class="unit-limit">${unit.type==='freezer'?'Legal max: -18°C':'Legal max: 8°C'} · Target: ≤${unit.max}°C</div>`
+      card.appendChild(uhdr)
 
-    const trow=el('div','temp-row')
-    const tw=el('div','temp-wrap')
-    const tinp=el('input','temp-inp'+(s!=='empty'?' '+s:''))
-    tinp.type='text';tinp.inputMode='decimal';tinp.placeholder='0.0'
-    tinp.value=val!==undefined?val:'';if(isLogged)tinp.disabled=true
-    tinp.oninput=e=>{
-      const raw=e.target.value
-      if(raw===''||raw==='-'||/^-?\d*\.?\d*$/.test(raw)){
-        T.readings[unit.id]=raw
-        const newS=getTempStatus(unit,raw)
-        updateChip(newS)
-        tinp.className='temp-inp'+(newS!=='empty'?' '+newS:'')
-        logbtn.disabled=isLogged||!raw||raw===''||raw==='-'
-      } else {
-        e.target.value=T.readings[unit.id]!==undefined?T.readings[unit.id]:''
+      const ubody=el('div','unit-body')
+
+      const trow=el('div','temp-row')
+      const tw=el('div','temp-wrap')
+      const tinp=el('input','temp-inp'+(s!=='empty'?' '+s:''))
+      tinp.type='text';tinp.inputMode='decimal';tinp.placeholder='0.0'
+      tinp.value=val!==undefined?val:''
+      if(isLogged)tinp.disabled=true
+      tinp.oninput=e=>{
+        const raw=e.target.value
+        if(raw===''||raw==='-'||/^-?\d*\.?\d*$/.test(raw)){
+          T.readings[uid]=raw
+          refreshCard()
+          const ni=card.querySelector('.temp-inp')
+          if(ni){ni.focus();const l=raw.length;try{ni.setSelectionRange(l,l)}catch(e){}}
+        } else {
+          e.target.value=T.readings[uid]!==undefined?T.readings[uid]:''
+        }
       }
+      const tu=el('span','temp-unit');tu.textContent='°C'
+      tw.appendChild(tinp);tw.appendChild(tu)
+
+      const chip=el('div','status-chip '+(s==='ok'?'chip-ok':s==='warn'?'chip-warn':s==='danger'?'chip-danger':'chip-empty'))
+      chip.textContent=s==='ok'?'✓ OK':s==='warn'?'⚠ CHECK':s==='danger'?'✕ ACTION':'—'
+      trow.appendChild(tw);trow.appendChild(chip)
+      ubody.appendChild(trow)
+
+      const noteDiv=el('div','unit-limit');noteDiv.style.marginBottom='6px';noteDiv.textContent=unit.note
+      ubody.appendChild(noteDiv)
+
+      if((s==='warn'||s==='danger')&&!isLogged){
+        const al=el('span','action-lbl');al.textContent='⚠ Corrective Action Required'
+        const ai=el('textarea','action-inp');ai.placeholder='Describe action taken…';ai.value=T.actions[uid]||''
+        ai.oninput=e=>{T.actions[uid]=e.target.value}
+        ubody.appendChild(al);ubody.appendChild(ai)
+      }
+
+      const logbtn=el('button','log-btn'+(isLogged?' logged':''))
+      logbtn.textContent=isLogged?'✓ Logged':'Log This Reading'
+      logbtn.disabled=isLogged||!hasVal
+      logbtn.onclick=()=>logSingleTemp(unit)
+      ubody.appendChild(logbtn)
+
+      const ll=el('div','last-log')
+      const lastEntry=T.unitHist[uid]?.[0]
+      ll.textContent=lastEntry?`Last: ${new Date(lastEntry.logged_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} ${new Date(lastEntry.logged_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} — ${lastEntry.temperature}°C by ${lastEntry.staff_name||'?'}`:'No logs yet today'
+      ubody.appendChild(ll)
+      card.appendChild(ubody)
     }
-    const tu=el('span','temp-unit');tu.textContent='°C'
-    tw.appendChild(tinp);tw.appendChild(tu)
-    trow.appendChild(tw);trow.appendChild(chip)
-    ubody.appendChild(trow)
-    const noteDiv=el('div','unit-limit');noteDiv.style.marginBottom='6px';noteDiv.textContent=unit.note
-    ubody.appendChild(noteDiv)
 
-    if((s==='warn'||s==='danger')&&!isLogged){
-      const al=el('span','action-lbl');al.textContent='⚠ Corrective Action Required'
-      const ai=el('textarea','action-inp');ai.placeholder='Describe action taken…';ai.value=action
-      ai.oninput=e=>{T.actions[unit.id]=e.target.value}
-      ubody.appendChild(al);ubody.appendChild(ai)
-    }
-
-    logbtn.textContent=isLogged?'✓ Logged':'Log This Reading'
-    logbtn.disabled=isLogged||val===undefined||val===''||val==='-'
-    logbtn.onclick=()=>logSingleTemp(unit)
-    ubody.appendChild(logbtn)
-
-    const ll=el('div','last-log')
-    const lastEntry=T.unitHist[unit.id]?.[0]
-    ll.textContent=lastEntry?`Last: ${new Date(lastEntry.logged_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} ${new Date(lastEntry.logged_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} — ${lastEntry.temperature}°C by ${lastEntry.staff_name||'?'}`:'No logs yet today'
-    ubody.appendChild(ll)
-    card.appendChild(ubody);grid.appendChild(card)
+    refreshCard()
   })
   main.appendChild(grid);app.appendChild(main)
 
