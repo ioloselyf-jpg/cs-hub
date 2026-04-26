@@ -888,7 +888,8 @@ function renderTemps(app){
     tw.appendChild(tinp);tw.appendChild(tu)
     trow.appendChild(tw);trow.appendChild(chip)
     ubody.appendChild(trow)
-    ubody.innerHTML+=`<div class="unit-limit" style="margin-bottom:6px">${unit.note}</div>`
+    const noteDiv=el('div','unit-limit');noteDiv.style.marginBottom='6px';noteDiv.textContent=unit.note
+    ubody.appendChild(noteDiv)
 
     if((s==='warn'||s==='danger')&&!isLogged){
       const al=el('span','action-lbl');al.textContent='⚠ Corrective Action Required'
