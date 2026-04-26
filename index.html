@@ -1026,8 +1026,15 @@ function renderTempHistoryTab(main, T){
   eb.textContent=`⬇ Export CSV${dayCount?' ('+dayCount+' rows)':''}`
   eb.onclick=exportTempCSV
 
+  const eab=el('button','export-btn')
+  eab.textContent='⬇ Export All Time'
+  eab.style.cssText='border-color:#555;color:#bbb'
+  eab.onmouseover=()=>{eab.style.background='#333';eab.style.color='#fff'}
+  eab.onmouseout=()=>{eab.style.background='none';eab.style.color='#bbb'}
+  eab.onclick=exportAllTempCSV
+
   filters.appendChild(dl);filters.appendChild(di);filters.appendChild(dl2);filters.appendChild(di2)
-  filters.appendChild(sl);filters.appendChild(si);filters.appendChild(eb)
+  filters.appendChild(sl);filters.appendChild(si);filters.appendChild(eb);filters.appendChild(eab)
   main.appendChild(filters)
 
   // Summary stats for range
@@ -1101,6 +1108,34 @@ function exportTempCSV(){
   const url=URL.createObjectURL(blob)
   const a=document.createElement('a')
   a.href=url;a.download=`chip-shop-temps-${T.historyFrom}-to-${T.historyTo}.csv`;a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function exportAllTempCSV(){
+  const btn=event.target
+  btn.textContent='Loading…';btn.disabled=true
+  const{data,error}=await db.from('temperature_logs').select('*').order('log_date',{ascending:true}).order('logged_at',{ascending:true})
+  btn.textContent='⬇ Export All Time';btn.disabled=false
+  if(error||!data?.length){alert(error?'Error: '+error.message:'No logs found.');return}
+  const headers=['Date','Time','Area','Unit','Session','Temperature (C)','Status','Staff','Corrective Action']
+  const rows=data.map(l=>{
+    const unit=UNITS.find(u=>u.id===l.unit_id)||{type:'fridge',max:5,warn:7}
+    const s=getTempStatus(unit,l.temperature)
+    return[
+      new Date(l.logged_at).toLocaleDateString('en-GB'),
+      new Date(l.logged_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+      l.area,l.unit_name,l.session,l.temperature,
+      s==='ok'?'OK':s==='warn'?'CHECK':'ACTION REQUIRED',
+      l.staff_name||'',l.corrective_action||''
+    ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')
+  })
+  const csv=[headers.join(','),...rows].join('\n')
+  const blob=new Blob([csv],{type:'text/csv'})
+  const url=URL.createObjectURL(blob)
+  const a=document.createElement('a')
+  const earliest=new Date(data[0].logged_at).toLocaleDateString('en-GB').replace(/\//g,'-')
+  const latest=new Date(data[data.length-1].logged_at).toLocaleDateString('en-GB').replace(/\//g,'-')
+  a.href=url;a.download=`chip-shop-temps-ALL-${earliest}-to-${latest}.csv`;a.click()
   URL.revokeObjectURL(url)
 }
 
