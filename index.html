@@ -461,6 +461,24 @@ body{background:#000;color:#fff;font-family:'Barlow',sans-serif;min-height:100vh
 .power-note{font-size:0.72rem;color:#777;line-height:1.5;margin-top:6px}
 .power-status{font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;letter-spacing:2px;text-transform:uppercase;color:#777;margin-top:8px;min-height:18px}
 .power-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.power-actions button{flex:1;min-width:140px}
+.power-card.warn{border-left-color:#ff9800}.power-card.idle{border-left-color:#444}
+.power-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:2px;margin-bottom:14px}
+.power-metric{background:#0d0d0d;border:1px solid #1a1a1a;padding:12px 14px;text-align:center}
+.power-metric-num{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.7rem;line-height:1;color:#fff}
+.power-metric-lbl{font-family:'Barlow Condensed',sans-serif;font-size:0.55rem;letter-spacing:2px;color:#666;text-transform:uppercase;margin-top:4px}
+.power-flag{font-family:'Barlow Condensed',sans-serif;font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;padding:4px 8px;border:1px solid;margin-top:8px;display:inline-block;font-weight:800}
+.power-flag.ok{color:#4caf50;border-color:#4caf50;background:rgba(76,175,80,0.08)}
+.power-flag.warn{color:#ff9800;border-color:#ff9800;background:rgba(255,152,0,0.08)}
+.power-flag.high{color:#c8102e;border-color:#c8102e;background:rgba(200,16,46,0.08)}
+.power-flag.idle{color:#777;border-color:#333;background:rgba(255,255,255,0.02)}
+.power-photo-cap{font-family:'Barlow Condensed',sans-serif;font-size:0.56rem;letter-spacing:2px;text-transform:uppercase;color:#777;margin-bottom:4px}
+.power-photo-box{background:#080808;border:1px solid #111;padding:6px}
+.power-sort-note{font-size:0.66rem;color:#666;line-height:1.5;margin-bottom:10px}
+.power-live-table{width:100%;border-collapse:collapse;margin-top:8px;background:#0a0a0a}
+.power-live-table th{font-family:'Barlow Condensed',sans-serif;font-size:0.55rem;letter-spacing:2px;text-transform:uppercase;color:#777;text-align:left;padding:8px;border-bottom:1px solid #111;background:#0d0d0d}
+.power-live-table td{font-size:0.7rem;color:#aaa;padding:8px;border-bottom:1px solid #080808;vertical-align:top}
+.power-live-table td.kw{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:0.95rem;color:#fff;white-space:nowrap}
+.power-export{margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap}
 
 /* PRINT STYLES */
 @media print{
@@ -1112,10 +1130,37 @@ const POWER_TEST_UNITS=[
 
 let POWER_TIMER=null
 let POWER_TIME=300
+let POWER_RESULTS_CACHE=[]
+
+function powerDefaultDuration(unit){return unit?.type==='heater'?5:10}
+function powerTypeFromName(name){
+  const n=(name||'').toLowerCase()
+  if(n.includes('heater'))return'heater'
+  if(n.includes('freezer'))return'freezer'
+  return'fridge'
+}
+function powerFlag(appliance,kw){
+  const type=powerTypeFromName(appliance)
+  const val=Number(kw)||0
+  if(type==='heater'){
+    if(val<1)return{cls:'warn',label:'⚠ LOW / NO SPIKE',detail:'Heater expected around 2–3 kW. Check it was fully on or retest.'}
+    if(val>3.5)return{cls:'high',label:'⚠ HIGH LOAD',detail:'High heater draw. Check rating plate / circuit load.'}
+    return{cls:'ok',label:'✓ HEATER OK',detail:'Typical large heater range.'}
+  }
+  if(val===0)return{cls:'idle',label:'○ NO CHANGE',detail:'Likely compressor did not run during test. Retest for 10 mins or wait for compressor cycle.'}
+  if(val>1)return{cls:'high',label:'⚠ HIGH COLD UNIT',detail:'Fridge/freezer above 1 kW is suspicious. Check compressor, seals, fans, or defrost cycle.'}
+  if(val>0.5)return{cls:'warn',label:'⚠ CHECK',detail:'Higher than expected for many cold units. Retest to confirm.'}
+  return{cls:'ok',label:'✓ NORMAL',detail:'Within expected rough cold-unit range.'}
+}
+function powerLatestByAppliance(rows){
+  const seen=new Map()
+  ;(rows||[]).forEach(r=>{if(!seen.has(r.appliance))seen.set(r.appliance,r)})
+  return Array.from(seen.values())
+}
 
 function renderPowerTest(app){
   const hero=el('div','hero')
-  hero.innerHTML=`<div class="ht">Load <span class="r">Test</span></div><div class="hero-sub">Meter spike test — photos + 5 min kW calculation</div>`
+  hero.innerHTML=`<div class="ht">Load <span class="r">Test</span></div><div class="hero-sub">Meter spike test — photos + smart dashboard</div>`
   app.appendChild(hero)
 
   const main=el('div','section-wrap')
@@ -1123,7 +1168,7 @@ function renderPowerTest(app){
   const panel=el('div','power-panel')
   panel.innerHTML=`
     <div class="power-title">New Appliance Test</div>
-    <div class="power-meta">Turn everything else off, capture before photo, turn one appliance on, wait 5 minutes, capture after photo.</div>
+    <div class="power-meta">Turn everything else off, capture before photo, turn one appliance on, wait, capture after photo, then save.</div>
   `
 
   const grid=el('div','power-grid')
@@ -1136,7 +1181,17 @@ function renderPowerTest(app){
     o.textContent=`${u.name} (${u.type}${u.area&&u.area!=='site'?' · '+u.area:''})`
     applianceSel.appendChild(o)
   })
+  applianceSel.onchange=()=>{
+    const unit=POWER_TEST_UNITS.find(u=>u.id===applianceSel.value)
+    const dur=document.getElementById('power-duration')
+    if(dur){dur.value=powerDefaultDuration(unit);resetPowerTimerToDuration()}
+  }
   applianceWrap.appendChild(applianceLbl);applianceWrap.appendChild(applianceSel)
+
+  const durationWrap=el('div')
+  const durationLbl=el('span','field-label');durationLbl.textContent='Test duration (minutes)'
+  const durationInp=el('input','txt-input');durationInp.id='power-duration';durationInp.type='number';durationInp.min='1';durationInp.step='1';durationInp.value='10';durationInp.oninput=resetPowerTimerToDuration
+  durationWrap.appendChild(durationLbl);durationWrap.appendChild(durationInp)
 
   const beforeWrap=el('div')
   const beforeLbl=el('span','field-label');beforeLbl.textContent='Before reading (kWh)'
@@ -1148,7 +1203,7 @@ function renderPowerTest(app){
   const afterInp=el('input','txt-input');afterInp.id='power-after';afterInp.type='number';afterInp.step='0.001';afterInp.placeholder='e.g. 1250.145'
   afterWrap.appendChild(afterLbl);afterWrap.appendChild(afterInp)
 
-  grid.appendChild(applianceWrap);grid.appendChild(beforeWrap);grid.appendChild(afterWrap)
+  grid.appendChild(applianceWrap);grid.appendChild(durationWrap);grid.appendChild(beforeWrap);grid.appendChild(afterWrap)
   panel.appendChild(grid)
 
   const photoGrid=el('div','power-grid')
@@ -1162,28 +1217,46 @@ function renderPowerTest(app){
   apw.appendChild(apl);apw.appendChild(api)
   photoGrid.appendChild(bpw);photoGrid.appendChild(apw);panel.appendChild(photoGrid)
 
-  const timer=el('div','power-timer');timer.id='power-timer';timer.textContent='05:00';panel.appendChild(timer)
+  const timer=el('div','power-timer');timer.id='power-timer';timer.textContent='10:00';panel.appendChild(timer)
   const actions=el('div','power-actions')
-  const start=el('button','btn-outline');start.textContent='Start 5 Min Timer';start.onclick=startPowerTimer
+  const start=el('button','btn-outline');start.textContent='Start Timer';start.onclick=startPowerTimer
   const save=el('button','btn-red');save.textContent='Upload Photos & Save Test';save.onclick=savePowerTest
   actions.appendChild(start);actions.appendChild(save);panel.appendChild(actions)
   const st=el('div','power-status');st.id='power-status';panel.appendChild(st)
-  const note=el('div','power-note');note.innerHTML='<strong>Calculation:</strong> kW = (after reading − before reading) × 12. Fridges may need a longer run if the compressor does not start during the 5-minute window.'
+  const note=el('div','power-note');note.innerHTML='<strong>Tip:</strong> fridges/freezers default to 10 mins because compressors cycle. Heaters default to 5 mins. Calculation adjusts to the selected duration.'
   panel.appendChild(note)
   main.appendChild(panel)
 
-  const resTitle=el('div','pcg-hdr');resTitle.textContent='Saved Results'
+  const dashTitle=el('div','pcg-hdr');dashTitle.textContent='Live Dashboard'
+  main.appendChild(dashTitle)
+  const dash=el('div');dash.id='power-dashboard';dash.innerHTML='<div class="prem-loading">Loading dashboard…</div>'
+  main.appendChild(dash)
+
+  const resTitle=el('div','pcg-hdr');resTitle.textContent='Saved Results — Sorted by Highest Load'
   main.appendChild(resTitle)
+  const tools=el('div','power-export')
+  const refresh=el('button','btn-outline');refresh.textContent='Refresh Results';refresh.onclick=loadPowerResults
+  const csv=el('button','btn-outline');csv.textContent='Export CSV';csv.onclick=exportPowerCsv
+  tools.appendChild(refresh);tools.appendChild(csv);main.appendChild(tools)
   const results=el('div');results.id='power-results';results.innerHTML='<div class="prem-loading">Loading results…</div>'
   main.appendChild(results)
   app.appendChild(main)
+  resetPowerTimerToDuration()
   loadPowerResults()
 }
 
+function resetPowerTimerToDuration(){
+  clearInterval(POWER_TIMER)
+  const mins=Math.max(1,parseInt(document.getElementById('power-duration')?.value||'10',10)||10)
+  POWER_TIME=mins*60
+  updatePowerTimerDisplay()
+}
 function startPowerTimer(){
   clearInterval(POWER_TIMER)
-  POWER_TIME=300
+  const mins=Math.max(1,parseInt(document.getElementById('power-duration')?.value||'10',10)||10)
+  POWER_TIME=mins*60
   updatePowerTimerDisplay()
+  setPowerStatus(`Timer started — run appliance for ${mins} minute${mins===1?'':'s'}.`)
   POWER_TIMER=setInterval(()=>{
     POWER_TIME--
     updatePowerTimerDisplay()
@@ -1192,7 +1265,7 @@ function startPowerTimer(){
 }
 function updatePowerTimerDisplay(){
   const t=document.getElementById('power-timer');if(!t)return
-  const m=Math.floor(POWER_TIME/60),s=POWER_TIME%60
+  const m=Math.floor(Math.max(POWER_TIME,0)/60),s=Math.max(POWER_TIME,0)%60
   t.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')
 }
 function setPowerStatus(msg){const s=document.getElementById('power-status');if(s)s.textContent=msg||''}
@@ -1213,6 +1286,7 @@ async function savePowerTest(){
     const unit=POWER_TEST_UNITS.find(u=>u.id===id)
     const before=parseFloat(document.getElementById('power-before').value)
     const after=parseFloat(document.getElementById('power-after').value)
+    const mins=Math.max(1,parseFloat(document.getElementById('power-duration').value)||powerDefaultDuration(unit))
     const beforeFile=document.getElementById('power-before-photo').files[0]
     const afterFile=document.getElementById('power-after-photo').files[0]
     if(!unit)return alert('Select an appliance.')
@@ -1222,10 +1296,11 @@ async function savePowerTest(){
     const beforeUrl=await uploadPowerPhoto(beforeFile,'before')
     const afterUrl=await uploadPowerPhoto(afterFile,'after')
     const delta=Number((after-before).toFixed(4))
-    const kw=Number((delta*12).toFixed(3))
+    const kw=Number((delta/(mins/60)).toFixed(3))
+    const flag=powerFlag(`${unit.name} (${unit.type})`,kw)
     setPowerStatus('Saving test…')
     const {error}=await db.from('power_tests').insert({
-      appliance:`${unit.name} (${unit.type})`,
+      appliance:`${unit.name} (${unit.type}) — ${mins} min`,
       before_reading:before,
       after_reading:after,
       delta_kwh:delta,
@@ -1234,7 +1309,7 @@ async function savePowerTest(){
       after_photo:afterUrl
     })
     if(error)throw error
-    setPowerStatus(`Saved: ${unit.name} — ${kw.toFixed(2)} kW`)
+    setPowerStatus(`Saved: ${unit.name} — ${kw.toFixed(2)} kW — ${flag.label.replace(/[✓⚠○]/g,'').trim()}`)
     document.getElementById('power-before').value=''
     document.getElementById('power-after').value=''
     document.getElementById('power-before-photo').value=''
@@ -1249,23 +1324,71 @@ async function savePowerTest(){
 
 async function loadPowerResults(){
   const box=document.getElementById('power-results');if(!box)return
-  const {data,error}=await db.from('power_tests').select('*').order('created_at',{ascending:false}).limit(50)
-  if(error){box.innerHTML='<div class="empty-state">Could not load results — check select policy</div>';return}
-  if(!data||!data.length){box.innerHTML='<div class="empty-state">No load tests saved yet</div>';return}
-  box.innerHTML=''
-  data.forEach(r=>{
-    const card=el('div','power-card '+((Number(r.kw)||0)>1?'high':'ok'))
+  const dash=document.getElementById('power-dashboard')
+  const {data,error}=await db.from('power_tests').select('*').order('created_at',{ascending:false}).limit(100)
+  if(error){box.innerHTML='<div class="empty-state">Could not load results — check select policy</div>';if(dash)dash.innerHTML='';return}
+  if(!data||!data.length){box.innerHTML='<div class="empty-state">No load tests saved yet</div>';if(dash)dash.innerHTML='<div class="empty-state">No dashboard data yet</div>';return}
+  POWER_RESULTS_CACHE=data
+  const sorted=[...data].sort((a,b)=>(Number(b.kw)||0)-(Number(a.kw)||0))
+  renderPowerDashboard(sorted)
+  box.innerHTML='<div class="power-sort-note">Results below are sorted by highest measured kW so the biggest spike is always at the top.</div>'
+  sorted.forEach(r=>box.appendChild(powerResultCard(r)))
+}
+
+function renderPowerDashboard(sorted){
+  const dash=document.getElementById('power-dashboard');if(!dash)return
+  const latest=powerLatestByAppliance(sorted)
+  const highest=sorted[0]
+  const totalLatest=latest.reduce((sum,r)=>sum+(Number(r.kw)||0),0)
+  const flagged=sorted.filter(r=>['high','warn'].includes(powerFlag(r.appliance,r.kw).cls)).length
+  const avg=sorted.reduce((sum,r)=>sum+(Number(r.kw)||0),0)/sorted.length
+  const topRows=sorted.slice(0,8).map(r=>{
+    const f=powerFlag(r.appliance,r.kw)
     const dt=r.created_at?new Date(r.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''
-    card.innerHTML=`
-      <div class="power-title">${r.appliance||'Appliance'}</div>
-      <div class="power-meta">${dt} · before ${r.before_reading} → after ${r.after_reading} · Δ ${Number(r.delta_kwh||0).toFixed(3)} kWh</div>
-      <div class="power-result">${Number(r.kw||0).toFixed(2)} kW</div>
-      <div class="power-photo-row">
-        ${r.before_photo?`<a href="${r.before_photo}" target="_blank"><img src="${r.before_photo}" alt="Before meter photo"></a>`:''}
-        ${r.after_photo?`<a href="${r.after_photo}" target="_blank"><img src="${r.after_photo}" alt="After meter photo"></a>`:''}
-      </div>`
-    box.appendChild(card)
+    return `<tr><td>${r.appliance||'Appliance'}</td><td class="kw">${Number(r.kw||0).toFixed(2)} kW</td><td><span class="power-flag ${f.cls}">${f.label}</span></td><td>${dt}</td></tr>`
+  }).join('')
+  dash.innerHTML=`
+    <div class="power-dash">
+      <div class="power-metric"><div class="power-metric-num">${sorted.length}</div><div class="power-metric-lbl">Tests</div></div>
+      <div class="power-metric"><div class="power-metric-num">${highest?Number(highest.kw||0).toFixed(2):'0.00'}</div><div class="power-metric-lbl">Highest kW</div></div>
+      <div class="power-metric"><div class="power-metric-num">${avg.toFixed(2)}</div><div class="power-metric-lbl">Average kW</div></div>
+      <div class="power-metric"><div class="power-metric-num" style="color:#ff9800">${flagged}</div><div class="power-metric-lbl">Flagged</div></div>
+      <div class="power-metric"><div class="power-metric-num" style="color:#c8102e">${totalLatest.toFixed(2)}</div><div class="power-metric-lbl">Latest Total kW</div></div>
+    </div>
+    <div class="power-note"><strong>Latest Total kW</strong> estimates combined draw using only the newest test per appliance. It is not a live simultaneous meter reading.</div>
+    <table class="power-live-table"><thead><tr><th>Appliance</th><th>Load</th><th>Status</th><th>Time</th></tr></thead><tbody>${topRows}</tbody></table>
+  `
+}
+
+function powerResultCard(r){
+  const f=powerFlag(r.appliance,r.kw)
+  const card=el('div','power-card '+f.cls)
+  const dt=r.created_at?new Date(r.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''
+  card.innerHTML=`
+    <div class="power-title">${r.appliance||'Appliance'}</div>
+    <div class="power-meta">${dt} · before ${r.before_reading} → after ${r.after_reading} · Δ ${Number(r.delta_kwh||0).toFixed(3)} kWh</div>
+    <div class="power-result">${Number(r.kw||0).toFixed(2)} kW</div>
+    <span class="power-flag ${f.cls}">${f.label}</span>
+    <div class="power-note">${f.detail}</div>
+    <div class="power-photo-row">
+      ${r.before_photo?`<div class="power-photo-box"><div class="power-photo-cap">Before meter photo</div><a href="${r.before_photo}" target="_blank"><img src="${r.before_photo}" alt="Before meter photo"></a><div class="power-meta">Reading: ${r.before_reading}</div></div>`:''}
+      ${r.after_photo?`<div class="power-photo-box"><div class="power-photo-cap">After meter photo</div><a href="${r.after_photo}" target="_blank"><img src="${r.after_photo}" alt="After meter photo"></a><div class="power-meta">Reading: ${r.after_reading}</div></div>`:''}
+    </div>`
+  return card
+}
+
+function exportPowerCsv(){
+  if(!POWER_RESULTS_CACHE.length){alert('No power test results to export yet.');return}
+  const rows=[['Created','Appliance','Before Reading','After Reading','Delta kWh','kW','Status','Before Photo','After Photo']]
+  POWER_RESULTS_CACHE.forEach(r=>{
+    const f=powerFlag(r.appliance,r.kw)
+    rows.push([r.created_at||'',r.appliance||'',r.before_reading??'',r.after_reading??'',r.delta_kwh??'',r.kw??'',f.label,r.before_photo||'',r.after_photo||''])
   })
+  const csv=rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\\n')
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'})
+  const url=URL.createObjectURL(blob)
+  const a=document.createElement('a')
+  a.href=url;a.download='chip-shop-load-tests.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)
 }
 
 // ============================================================
