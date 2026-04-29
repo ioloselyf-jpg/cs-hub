@@ -473,6 +473,7 @@ body{background:#000;color:#fff;font-family:'Barlow',sans-serif;min-height:100vh
 .power-flag.idle{color:#777;border-color:#333;background:rgba(255,255,255,0.02)}
 .power-photo-cap{font-family:'Barlow Condensed',sans-serif;font-size:0.56rem;letter-spacing:2px;text-transform:uppercase;color:#777;margin-bottom:4px}
 .power-photo-box{background:#080808;border:1px solid #111;padding:6px}
+.power-photo-missing{border:1px dashed #333!important;background:#050505!important}
 .power-sort-note{font-size:0.66rem;color:#666;line-height:1.5;margin-bottom:10px}
 .power-live-table{width:100%;border-collapse:collapse;margin-top:8px;background:#0a0a0a}
 .power-live-table th{font-family:'Barlow Condensed',sans-serif;font-size:0.55rem;letter-spacing:2px;text-transform:uppercase;color:#777;text-align:left;padding:8px;border-bottom:1px solid #111;background:#0d0d0d}
@@ -557,6 +558,8 @@ let G={
   wc:{tab:'fixtures',filter:'all',searchName:'',currentCard:null,cards:[],scanId:'',scanResult:null,scanning:false,scanErr:null,newName:'',newPhone:''},
   // Premises Checks
   prem:{tab:'kitchen',shift:'Opening',signedBy:'',checks:{},flags:{},notes:{},saving:false,saved:false,history:[],histView:'checks',histLoading:false,histLoaded:false,histFilter:{section:'all',shift:'all'},histOpen:{}},
+  // Power test draft (persists across tab switches)
+  powerDraft:{applianceId:'',before:'',after:'',duration:'',status:''},
 }
 
 // ============================================================
@@ -1126,6 +1129,8 @@ const POWER_TEST_UNITS=[
   {id:'h-1',name:'Heater 1',type:'heater',area:'site'},
   {id:'h-2',name:'Heater 2',type:'heater',area:'site'},
   {id:'h-3',name:'Heater 3',type:'heater',area:'site'},
+  {id:'pm-1',name:'Postmix Machine',type:'other',area:'bar'},
+  {id:'bc-1',name:'Beer Chiller',type:'fridge',area:'bar'},
 ]
 
 let POWER_TIMER=null
@@ -1137,6 +1142,7 @@ function powerTypeFromName(name){
   const n=(name||'').toLowerCase()
   if(n.includes('heater'))return'heater'
   if(n.includes('freezer'))return'freezer'
+  if(n.includes('postmix')||n.includes('post mix'))return'other'
   return'fridge'
 }
 function powerFlag(appliance,kw){
@@ -1146,6 +1152,11 @@ function powerFlag(appliance,kw){
     if(val<1)return{cls:'warn',label:'⚠ LOW / NO SPIKE',detail:'Heater expected around 2–3 kW. Check it was fully on or retest.'}
     if(val>3.5)return{cls:'high',label:'⚠ HIGH LOAD',detail:'High heater draw. Check rating plate / circuit load.'}
     return{cls:'ok',label:'✓ HEATER OK',detail:'Typical large heater range.'}
+  }
+  if(type==='other'){
+    if(val===0)return{cls:'idle',label:'○ NO CHANGE',detail:'No draw detected. Check appliance was running during test.'}
+    if(val>1.5)return{cls:'high',label:'⚠ HIGH LOAD',detail:'Higher than expected. Check appliance is functioning normally.'}
+    return{cls:'ok',label:'✓ NORMAL',detail:'Draw recorded. Compare against future tests to establish baseline.'}
   }
   if(val===0)return{cls:'idle',label:'○ NO CHANGE',detail:'Likely compressor did not run during test. Retest for 10 mins or wait for compressor cycle.'}
   if(val>1)return{cls:'high',label:'⚠ HIGH COLD UNIT',detail:'Fridge/freezer above 1 kW is suspicious. Check compressor, seals, fans, or defrost cycle.'}
@@ -1159,6 +1170,7 @@ function powerLatestByAppliance(rows){
 }
 
 function renderPowerTest(app){
+  const D=G.powerDraft
   const hero=el('div','hero')
   hero.innerHTML=`<div class="ht">Load <span class="r">Test</span></div><div class="hero-sub">Meter spike test — photos + smart dashboard</div>`
   app.appendChild(hero)
@@ -1168,7 +1180,7 @@ function renderPowerTest(app){
   const panel=el('div','power-panel')
   panel.innerHTML=`
     <div class="power-title">New Appliance Test</div>
-    <div class="power-meta">Turn everything else off, capture before photo, turn one appliance on, wait, capture after photo, then save.</div>
+    <div class="power-meta">Turn everything else off, capture before photo, turn one appliance on, wait, capture after photo, then save. Photos are optional — you can add them later.</div>
   `
 
   const grid=el('div','power-grid')
@@ -1179,28 +1191,37 @@ function renderPowerTest(app){
     const o=document.createElement('option')
     o.value=u.id
     o.textContent=`${u.name} (${u.type}${u.area&&u.area!=='site'?' · '+u.area:''})`
+    if(u.id===D.applianceId) o.selected=true
     applianceSel.appendChild(o)
   })
   applianceSel.onchange=()=>{
+    D.applianceId=applianceSel.value
     const unit=POWER_TEST_UNITS.find(u=>u.id===applianceSel.value)
     const dur=document.getElementById('power-duration')
-    if(dur){dur.value=powerDefaultDuration(unit);resetPowerTimerToDuration()}
+    if(dur&&!D.duration){dur.value=powerDefaultDuration(unit);D.duration=dur.value;resetPowerTimerToDuration()}
+    else if(dur){resetPowerTimerToDuration()}
   }
   applianceWrap.appendChild(applianceLbl);applianceWrap.appendChild(applianceSel)
 
   const durationWrap=el('div')
   const durationLbl=el('span','field-label');durationLbl.textContent='Test duration (minutes)'
-  const durationInp=el('input','txt-input');durationInp.id='power-duration';durationInp.type='number';durationInp.min='1';durationInp.step='1';durationInp.value='10';durationInp.oninput=resetPowerTimerToDuration
+  const durationInp=el('input','txt-input');durationInp.id='power-duration';durationInp.type='number';durationInp.min='1';durationInp.step='1'
+  durationInp.value=D.duration||'10'
+  durationInp.oninput=()=>{D.duration=durationInp.value;resetPowerTimerToDuration()}
   durationWrap.appendChild(durationLbl);durationWrap.appendChild(durationInp)
 
   const beforeWrap=el('div')
   const beforeLbl=el('span','field-label');beforeLbl.textContent='Before reading (kWh)'
   const beforeInp=el('input','txt-input');beforeInp.id='power-before';beforeInp.type='number';beforeInp.step='0.001';beforeInp.placeholder='e.g. 1250.123'
+  beforeInp.value=D.before||''
+  beforeInp.oninput=()=>D.before=beforeInp.value
   beforeWrap.appendChild(beforeLbl);beforeWrap.appendChild(beforeInp)
 
   const afterWrap=el('div')
   const afterLbl=el('span','field-label');afterLbl.textContent='After reading (kWh)'
   const afterInp=el('input','txt-input');afterInp.id='power-after';afterInp.type='number';afterInp.step='0.001';afterInp.placeholder='e.g. 1250.145'
+  afterInp.value=D.after||''
+  afterInp.oninput=()=>D.after=afterInp.value
   afterWrap.appendChild(afterLbl);afterWrap.appendChild(afterInp)
 
   grid.appendChild(applianceWrap);grid.appendChild(durationWrap);grid.appendChild(beforeWrap);grid.appendChild(afterWrap)
@@ -1208,22 +1229,25 @@ function renderPowerTest(app){
 
   const photoGrid=el('div','power-grid')
   const bpw=el('div')
-  const bpl=el('span','field-label');bpl.textContent='Before meter photo'
+  const bpl=el('span','field-label');bpl.textContent='Before meter photo (optional)'
   const bpi=el('input','txt-input');bpi.id='power-before-photo';bpi.type='file';bpi.accept='image/*';bpi.capture='environment'
   bpw.appendChild(bpl);bpw.appendChild(bpi)
   const apw=el('div')
-  const apl=el('span','field-label');apl.textContent='After meter photo'
+  const apl=el('span','field-label');apl.textContent='After meter photo (optional)'
   const api=el('input','txt-input');api.id='power-after-photo';api.type='file';api.accept='image/*';api.capture='environment'
   apw.appendChild(apl);apw.appendChild(api)
   photoGrid.appendChild(bpw);photoGrid.appendChild(apw);panel.appendChild(photoGrid)
 
-  const timer=el('div','power-timer');timer.id='power-timer';timer.textContent='10:00';panel.appendChild(timer)
+  const timer=el('div','power-timer');timer.id='power-timer'
+  const savedMins=parseInt(D.duration||'10',10)||10
+  timer.textContent=String(Math.floor(POWER_TIME/60)).padStart(2,'0')+':'+String(POWER_TIME%60).padStart(2,'0')
+  panel.appendChild(timer)
   const actions=el('div','power-actions')
   const start=el('button','btn-outline');start.textContent='Start Timer';start.onclick=startPowerTimer
-  const save=el('button','btn-red');save.textContent='Upload Photos & Save Test';save.onclick=savePowerTest
+  const save=el('button','btn-red');save.textContent='Save Test';save.onclick=savePowerTest
   actions.appendChild(start);actions.appendChild(save);panel.appendChild(actions)
-  const st=el('div','power-status');st.id='power-status';panel.appendChild(st)
-  const note=el('div','power-note');note.innerHTML='<strong>Tip:</strong> fridges/freezers default to 10 mins because compressors cycle. Heaters default to 5 mins. Calculation adjusts to the selected duration.'
+  const st=el('div','power-status');st.id='power-status';st.textContent=D.status||'';panel.appendChild(st)
+  const note=el('div','power-note');note.innerHTML='<strong>Tip:</strong> fridges/freezers default to 10 mins because compressors cycle. Heaters default to 5 mins. Photos are optional — add them now or upload them to a saved result later.'
   panel.appendChild(note)
   main.appendChild(panel)
 
@@ -1280,8 +1304,8 @@ async function uploadPowerPhoto(file,label){
 }
 
 async function savePowerTest(){
+  const D=G.powerDraft
   try{
-    setPowerStatus('Uploading photos…')
     const id=document.getElementById('power-appliance').value
     const unit=POWER_TEST_UNITS.find(u=>u.id===id)
     const before=parseFloat(document.getElementById('power-before').value)
@@ -1292,9 +1316,12 @@ async function savePowerTest(){
     if(!unit)return alert('Select an appliance.')
     if(Number.isNaN(before)||Number.isNaN(after))return alert('Enter before and after kWh readings.')
     if(after<before)return alert('After reading must be higher than or equal to before reading.')
-    if(!beforeFile||!afterFile)return alert('Upload both before and after meter photos.')
-    const beforeUrl=await uploadPowerPhoto(beforeFile,'before')
-    const afterUrl=await uploadPowerPhoto(afterFile,'after')
+    let beforeUrl=null,afterUrl=null
+    if(beforeFile||afterFile){
+      setPowerStatus('Uploading photos…')
+      if(beforeFile) beforeUrl=await uploadPowerPhoto(beforeFile,'before')
+      if(afterFile) afterUrl=await uploadPowerPhoto(afterFile,'after')
+    }
     const delta=Number((after-before).toFixed(4))
     const kw=Number((delta/(mins/60)).toFixed(3))
     const flag=powerFlag(`${unit.name} (${unit.type})`,kw)
@@ -1309,7 +1336,10 @@ async function savePowerTest(){
       after_photo:afterUrl
     })
     if(error)throw error
-    setPowerStatus(`Saved: ${unit.name} — ${kw.toFixed(2)} kW — ${flag.label.replace(/[✓⚠○]/g,'').trim()}`)
+    const msg=`Saved: ${unit.name} — ${kw.toFixed(2)} kW — ${flag.label.replace(/[✓⚠○]/g,'').trim()}`
+    setPowerStatus(msg)
+    // Clear draft
+    D.before='';D.after='';D.status=msg
     document.getElementById('power-before').value=''
     document.getElementById('power-after').value=''
     document.getElementById('power-before-photo').value=''
@@ -1317,7 +1347,8 @@ async function savePowerTest(){
     loadPowerResults()
   }catch(err){
     console.error(err)
-    setPowerStatus('Error: '+(err.message||err))
+    const msg='Error: '+(err.message||err)
+    setPowerStatus(msg);D.status=msg
     alert('Power test failed: '+(err.message||err))
   }
 }
@@ -1371,10 +1402,34 @@ function powerResultCard(r){
     <span class="power-flag ${f.cls}">${f.label}</span>
     <div class="power-note">${f.detail}</div>
     <div class="power-photo-row">
-      ${r.before_photo?`<div class="power-photo-box"><div class="power-photo-cap">Before meter photo</div><a href="${r.before_photo}" target="_blank"><img src="${r.before_photo}" alt="Before meter photo"></a><div class="power-meta">Reading: ${r.before_reading}</div></div>`:''}
-      ${r.after_photo?`<div class="power-photo-box"><div class="power-photo-cap">After meter photo</div><a href="${r.after_photo}" target="_blank"><img src="${r.after_photo}" alt="After meter photo"></a><div class="power-meta">Reading: ${r.after_reading}</div></div>`:''}
-    </div>`
+      ${r.before_photo
+        ?`<div class="power-photo-box"><div class="power-photo-cap">Before meter photo</div><a href="${r.before_photo}" target="_blank"><img src="${r.before_photo}" alt="Before meter photo"></a><div class="power-meta">Reading: ${r.before_reading}</div></div>`
+        :`<div class="power-photo-box power-photo-missing"><div class="power-photo-cap">Before photo — not uploaded</div><label class="btn-outline" style="cursor:pointer;display:inline-block;margin-top:6px;padding:5px 12px;font-size:0.7rem">📷 Add before photo<input type="file" accept="image/*" capture="environment" style="display:none" onchange="retroAddPhoto(this,'${r.id}','before')"></label></div>`
+      }
+      ${r.after_photo
+        ?`<div class="power-photo-box"><div class="power-photo-cap">After meter photo</div><a href="${r.after_photo}" target="_blank"><img src="${r.after_photo}" alt="After meter photo"></a><div class="power-meta">Reading: ${r.after_reading}</div></div>`
+        :`<div class="power-photo-box power-photo-missing"><div class="power-photo-cap">After photo — not uploaded</div><label class="btn-outline" style="cursor:pointer;display:inline-block;margin-top:6px;padding:5px 12px;font-size:0.7rem">📷 Add after photo<input type="file" accept="image/*" capture="environment" style="display:none" onchange="retroAddPhoto(this,'${r.id}','after')"></label></div>`
+      }
+    </div>
+    <div id="retro-status-${r.id}" class="power-meta" style="margin-top:6px;color:#888"></div>`
   return card
+}
+
+async function retroAddPhoto(input,recordId,slot){
+  const file=input.files[0];if(!file)return
+  const statusEl=document.getElementById(`retro-status-${recordId}`)
+  if(statusEl) statusEl.textContent='Uploading photo…'
+  try{
+    const url=await uploadPowerPhoto(file,slot)
+    const field=slot==='before'?'before_photo':'after_photo'
+    const {error}=await db.from('power_tests').update({[field]:url}).eq('id',recordId)
+    if(error)throw error
+    if(statusEl) statusEl.textContent='✓ Photo saved'
+    setTimeout(()=>loadPowerResults(),800)
+  }catch(err){
+    console.error(err)
+    if(statusEl) statusEl.textContent='Error uploading photo: '+(err.message||err)
+  }
 }
 
 function exportPowerCsv(){
