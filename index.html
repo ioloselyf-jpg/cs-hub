@@ -1230,11 +1230,11 @@ function renderPowerTest(app){
   const photoGrid=el('div','power-grid')
   const bpw=el('div')
   const bpl=el('span','field-label');bpl.textContent='Before meter photo (optional)'
-  const bpi=el('input','txt-input');bpi.id='power-before-photo';bpi.type='file';bpi.accept='image/*';bpi.capture='environment'
+  const bpi=el('input','txt-input');bpi.id='power-before-photo';bpi.type='file';bpi.accept='image/*';
   bpw.appendChild(bpl);bpw.appendChild(bpi)
   const apw=el('div')
   const apl=el('span','field-label');apl.textContent='After meter photo (optional)'
-  const api=el('input','txt-input');api.id='power-after-photo';api.type='file';api.accept='image/*';api.capture='environment'
+  const api=el('input','txt-input');api.id='power-after-photo';api.type='file';api.accept='image/*';
   apw.appendChild(apl);apw.appendChild(api)
   photoGrid.appendChild(bpw);photoGrid.appendChild(apw);panel.appendChild(photoGrid)
 
@@ -1404,11 +1404,11 @@ function powerResultCard(r){
     <div class="power-photo-row">
       ${r.before_photo
         ?`<div class="power-photo-box"><div class="power-photo-cap">Before meter photo</div><a href="${r.before_photo}" target="_blank"><img src="${r.before_photo}" alt="Before meter photo"></a><div class="power-meta">Reading: ${r.before_reading}</div></div>`
-        :`<div class="power-photo-box power-photo-missing"><div class="power-photo-cap">Before photo — not uploaded</div><label class="btn-outline" style="cursor:pointer;display:inline-block;margin-top:6px;padding:5px 12px;font-size:0.7rem">📷 Add before photo<input type="file" accept="image/*" capture="environment" style="display:none" onchange="retroAddPhoto(this,'${r.id}','before')"></label></div>`
+        :`<div class="power-photo-box power-photo-missing"><div class="power-photo-cap">Before photo — not uploaded</div><label class="btn-outline" style="cursor:pointer;display:inline-block;margin-top:6px;padding:5px 12px;font-size:0.7rem">📷 Add before photo<input type="file" accept="image/*" style="display:none" onchange="retroAddPhoto(this,'${r.id}','before')"></label></div>`
       }
       ${r.after_photo
         ?`<div class="power-photo-box"><div class="power-photo-cap">After meter photo</div><a href="${r.after_photo}" target="_blank"><img src="${r.after_photo}" alt="After meter photo"></a><div class="power-meta">Reading: ${r.after_reading}</div></div>`
-        :`<div class="power-photo-box power-photo-missing"><div class="power-photo-cap">After photo — not uploaded</div><label class="btn-outline" style="cursor:pointer;display:inline-block;margin-top:6px;padding:5px 12px;font-size:0.7rem">📷 Add after photo<input type="file" accept="image/*" capture="environment" style="display:none" onchange="retroAddPhoto(this,'${r.id}','after')"></label></div>`
+        :`<div class="power-photo-box power-photo-missing"><div class="power-photo-cap">After photo — not uploaded</div><label class="btn-outline" style="cursor:pointer;display:inline-block;margin-top:6px;padding:5px 12px;font-size:0.7rem">📷 Add after photo<input type="file" accept="image/*" style="display:none" onchange="retroAddPhoto(this,'${r.id}','after')"></label></div>`
       }
     </div>
     <div id="retro-status-${r.id}" class="power-meta" style="margin-top:6px;color:#888"></div>`
