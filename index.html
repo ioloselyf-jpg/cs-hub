@@ -133,6 +133,9 @@ body{background:#000;color:#fff;font-family:'Barlow',sans-serif;min-height:100vh
 .temp-inp:focus{border-color:#c8102e}
 .temp-inp.ok{border-color:#4caf50;color:#4caf50}.temp-inp.warn{border-color:#ff9800;color:#ff9800}.temp-inp.danger{border-color:#c8102e;color:#c8102e}
 .temp-unit{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;color:#444}
+.temp-quick-row{display:flex;gap:4px;margin-top:4px}
+.temp-quick-btn{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:0.85rem;letter-spacing:2px;padding:8px 14px;background:#1a1a1a;border:1px solid #333;color:#c8102e;cursor:pointer;transition:all 0.15s}
+.temp-quick-btn:hover{background:#c8102e;color:#fff;border-color:#c8102e}
 .status-chip{font-family:'Barlow Condensed',sans-serif;font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border:1px solid;font-weight:700}
 .chip-ok{color:#4caf50;border-color:#4caf50;background:rgba(76,175,80,0.08)}
 .chip-warn{color:#ff9800;border-color:#ff9800;background:rgba(255,152,0,0.08)}
@@ -501,6 +504,66 @@ body{background:#000;color:#fff;font-family:'Barlow',sans-serif;min-height:100vh
 .ph-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:2rem;letter-spacing:4px;text-transform:uppercase}
 .ph-sub{font-size:0.75rem;color:#666;margin-top:4px;letter-spacing:2px;text-transform:uppercase}
 
+/* SHARED MODULE STYLES — Allergens, Delivery, Incident, Cleaning, Stock, Maint, Cash, Visitor, Handover, Suppliers */
+.mod-hero{background:#000;border-bottom:1px solid #111;padding:24px 20px 18px;text-align:center}
+.mod-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:clamp(1.8rem,5vw,3rem);letter-spacing:4px;text-transform:uppercase;line-height:0.95}
+.mod-title .r{color:#c8102e}
+.mod-sub{font-size:0.6rem;letter-spacing:4px;color:#888;margin-top:8px;text-transform:uppercase}
+.mod-tabs{display:flex;border-bottom:2px solid #111;background:#000;overflow-x:auto}
+.mod-tab{flex:1;min-width:80px;background:none;border:none;border-bottom:3px solid transparent;padding:12px 8px;color:#555;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.78rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.mod-tab:hover{color:#fff;background:#0a0a0a}.mod-tab.on{color:#fff;border-bottom-color:#c8102e;background:#0a0a0a}
+.mod-body{max-width:960px;margin:0 auto;padding:18px 20px 100px}
+.mod-card{background:#0a0a0a;border-left:3px solid #1a1a1a;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:background 0.15s}
+.mod-card:hover{background:#0f0f0f}
+.mod-card.high{border-left-color:#c8102e}
+.mod-card.warn{border-left-color:#ff9800}
+.mod-card.ok{border-left-color:#4caf50}
+.mod-card-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mod-card-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:0.95rem;letter-spacing:2px;text-transform:uppercase;color:#fff}
+.mod-card-sub{font-family:'Barlow Condensed',sans-serif;font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;color:#666;margin-top:3px}
+.mod-card-body{font-size:0.78rem;color:#999;margin-top:8px;line-height:1.5}
+.mod-card-meta{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:0.6rem;color:#555;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase}
+.mod-pill{padding:2px 8px;border:1px solid #222;background:#080808;color:#888}
+.mod-pill.red{border-color:#c8102e;color:#c8102e;background:rgba(200,16,46,0.05)}
+.mod-pill.green{border-color:#4caf50;color:#4caf50;background:rgba(76,175,80,0.05)}
+.mod-pill.amber{border-color:#ff9800;color:#ff9800;background:rgba(255,152,0,0.05)}
+.mod-form{background:#0a0a0a;border:1px solid #111;padding:16px;margin-bottom:14px}
+.mod-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mod-field{display:flex;flex-direction:column;gap:4px}
+.mod-field.full{grid-column:1/-1}
+.mod-field-lbl{font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:#777}
+.mod-input,.mod-textarea,.mod-select{font-family:'Barlow',sans-serif;font-size:0.85rem;padding:9px 11px;background:#111;border:1px solid #222;color:#fff;outline:none;width:100%}
+.mod-input:focus,.mod-textarea:focus,.mod-select:focus{border-color:#c8102e}
+.mod-textarea{min-height:70px;resize:vertical;font-family:'Barlow',sans-serif}
+.mod-input::placeholder,.mod-textarea::placeholder{color:#333}
+.mod-checkbox{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0}
+.mod-checkbox input{width:18px;height:18px;cursor:pointer;accent-color:#c8102e}
+.mod-checkbox-lbl{font-size:0.85rem;color:#ccc}
+.mod-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.mod-btn{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:0.82rem;letter-spacing:2px;text-transform:uppercase;padding:11px 22px;background:#c8102e;border:none;color:#fff;cursor:pointer;transition:all 0.15s}
+.mod-btn:hover{background:#9e0c23}.mod-btn:disabled{background:#1a1a1a;color:#333;cursor:not-allowed}
+.mod-btn-out{background:none;color:#ddd;border:1px solid #333}
+.mod-btn-out:hover{background:#1a1a1a;border-color:#c8102e;color:#fff}
+.mod-empty{text-align:center;padding:50px 20px;font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;letter-spacing:3px;text-transform:uppercase;color:#222}
+.mod-stat-row{display:flex;gap:1px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.mod-stat{background:#0d0d0d;border:1px solid #1a1a1a;padding:9px 16px;min-width:80px;text-align:center}
+.mod-stat-num{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.5rem;line-height:1}
+.mod-stat-lbl{font-family:'Barlow Condensed',sans-serif;font-size:0.52rem;letter-spacing:3px;color:#666;margin-top:3px;text-transform:uppercase}
+.mod-allergen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-top:8px}
+.mod-allergen-chip{padding:7px 10px;background:#0d0d0d;border:1px solid #1a1a1a;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;letter-spacing:1px;text-transform:uppercase;color:#666;transition:all 0.15s;text-align:center}
+.mod-allergen-chip:hover{border-color:#c8102e;color:#fff}
+.mod-allergen-chip.on{background:#c8102e;color:#fff;border-color:#c8102e}
+.mod-banner{background:rgba(200,16,46,0.06);border:1px solid #c8102e;padding:11px 14px;margin-bottom:14px;font-size:0.78rem;color:#ddd}
+.mod-banner.green{background:rgba(76,175,80,0.06);border-color:#4caf50;color:#ddd}
+.mod-banner.amber{background:rgba(255,152,0,0.06);border-color:#ff9800;color:#ddd}
+.mod-section-hdr{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:0.7rem;letter-spacing:4px;text-transform:uppercase;color:#c8102e;padding:10px 0 6px;border-bottom:1px solid #111;margin-bottom:8px;margin-top:14px}
+.mod-search-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.mod-search-row .mod-input,.mod-search-row .mod-select{flex:1;min-width:140px}
+
+@media(max-width:700px){
+  .mod-form-grid{grid-template-columns:1fr}
+}
+
 @media(max-width:700px){
   .hdr{padding:0 14px}
   .dash-grid{grid-template-columns:1fr}
@@ -539,9 +602,9 @@ const PINTS_FOR_FREE=5
 // GLOBAL STATE
 // ============================================================
 let G={
-  screen:'dash',      // dash | compliance | temps | fire | training | worldcup
+  screen:'dash',
   status:'connecting',
-  unlocked:{compliance:false,fire:false,wcstaff:false},
+  unlocked:{compliance:false,fire:false,wcstaff:false,cash:false},
   pinTarget:null,
   pinInput:'',
   pinError:false,
@@ -560,6 +623,26 @@ let G={
   prem:{tab:'kitchen',shift:'Opening',signedBy:'',checks:{},flags:{},notes:{},saving:false,saved:false,history:[],histView:'checks',histLoading:false,histLoaded:false,histFilter:{section:'all',shift:'all'},histOpen:{}},
   // Power test draft (persists across tab switches)
   powerDraft:{applianceId:'',before:'',after:'',duration:'',status:''},
+  // Allergens
+  allergen:{tab:'menu',items:[],loading:false,loaded:false,editId:null,draft:null,filterAllergen:'all',search:''},
+  // Delivery
+  delivery:{tab:'new',items:[],loading:false,loaded:false,draft:{supplier:'',received_by:'',temp_chilled:'',batch_numbers:'',notes:'',photo_url:'',is_chilled:true,delivery_date:new Date().toISOString().split('T')[0]},saving:false,saved:false},
+  // Incident
+  incident:{tab:'new',items:[],loading:false,loaded:false,draft:{incident_type:'slip',incident_date:new Date().toISOString().split('T')[0],incident_time:new Date().toTimeString().slice(0,5),location:'',description:'',action_taken:'',riddor:false,witness_name:'',witness_contact:'',injured_name:'',injured_role:'',signed_by:'',photo_url:''},saving:false,saved:false,filterType:'all'},
+  // Cleaning
+  cleaning:{tab:'today',tasks:[],loading:false,loaded:false,signedBy:'',completing:{}},
+  // Stock & Wastage
+  stock:{tab:'new',items:[],loading:false,loaded:false,draft:{item:'',category:'food',quantity:'',unit:'kg',cost:'',reason:'spoilage',notes:'',signed_by:'',waste_date:new Date().toISOString().split('T')[0]},saving:false,filterCat:'all',filterPeriod:'7'},
+  // Maintenance
+  maint:{tab:'open',items:[],loading:false,loaded:false,draft:{title:'',category:'kitchen',priority:'medium',description:'',contractor:'',cost:'',status:'reported',due_date:'',resolved_date:'',reported_by:'',photo_url:''},saving:false,editId:null,filterStatus:'all'},
+  // Cash-up
+  cash:{tab:'new',items:[],loading:false,loaded:false,draft:{shift_date:new Date().toISOString().split('T')[0],shift:'closing',cash_total:'',card_total:'',void_total:'',void_reasons:'',float_start:'',float_end:'',variance:'',notes:'',signed_by:''},saving:false},
+  // Visitor
+  visitor:{tab:'today',items:[],loading:false,loaded:false,draft:{visitor_name:'',company:'',purpose:'contractor',signed_in_by:'',contact_number:'',signed_in_at:new Date().toISOString(),signed_out_at:''},saving:false},
+  // Handover
+  handover:{tab:'today',items:[],loading:false,loaded:false,draft:{handover_date:new Date().toISOString().split('T')[0],from_shift:'opening',from_name:'',issues:'',vips:'',deliveries_pending:'',followups:'',sales_target_notes:''},saving:false,saved:false},
+  // Suppliers
+  suppliers:{tab:'list',items:[],loading:false,loaded:false,draft:{name:'',category:'food',contact_name:'',phone:'',email:'',account_number:'',payment_terms:'',delivery_days:'',notes:''},saving:false,editId:null,search:''},
 }
 
 // ============================================================
@@ -579,6 +662,16 @@ const DASH_CARDS=[
   {id:'compliance',icon:'🍟',name:'Compliance',desc:'UK compliance checklist with projected vs actual costs. 69 checks across food safety, HR, health & safety, and legal.',locked:true},
   {id:'premises',icon:'🏠',name:'Premises Checks',desc:'Daily & weekly operational checks across kitchen, bar, floor, toilets, cellar and plant room.',locked:false},
   {id:'temps',icon:'🌡️',name:'Temperature Log',desc:'Log fridge and freezer temps every service across kitchen and bar. 12 units tracked.',locked:false},
+  {id:'allergens',icon:'🥜',name:'Allergens & Recipes',desc:'Natasha\u2019s Law compliance. Menu items, ingredients and the 14 UK allergens with last-reviewed dates.',locked:false},
+  {id:'delivery',icon:'📦',name:'Delivery Log',desc:'Goods-in checks. Supplier, chilled temp, batch numbers, photo and signed off — HACCP traceability.',locked:false},
+  {id:'incident',icon:'🚨',name:'Incident Log',desc:'Accidents, near misses, complaints, refusals and RIDDOR-reportable events with witness sign-off.',locked:false},
+  {id:'cleaning',icon:'🧽',name:'Cleaning Schedule',desc:'Deep cleans and recurring tasks — frequency, last completed, who did it. Auto-generates the rota.',locked:false},
+  {id:'stock',icon:'📊',name:'Stock & Wastage',desc:'Wastage by category, breakage, spoilage and GP impact. Spot patterns and reduce shrinkage.',locked:false},
+  {id:'maint',icon:'🔧',name:'Maintenance',desc:'Broken kit, contractors, costs, fix dates. Tracks PAT, gas safe and other recurring certifications.',locked:false},
+  {id:'cash',icon:'💷',name:'Cash-Up',desc:'Daily cash, card splits, voids, variances and manager sign-off. Flags shrinkage patterns.',locked:true},
+  {id:'visitor',icon:'📋',name:'Visitor Log',desc:'Contractors, EHO, fire officers and any non-staff entry. Required for some insurance policies.',locked:false},
+  {id:'handover',icon:'📝',name:'Shift Handover',desc:'Opening to closing manager passover — issues, VIPs, things to chase tomorrow.',locked:false},
+  {id:'suppliers',icon:'📇',name:'Suppliers',desc:'All supplier contacts in one place — rep, account number, payment terms, last delivery.',locked:false},
   {id:'power',icon:'⚡',name:'Load Test',desc:'Meter spike test for fridges, freezers and 3 large heaters. Upload before/after meter photos and calculate kW.',locked:false},
   {id:'fire',icon:'🔥',name:'Fire Safety',desc:'Full PAS 79 fire risk assessment with evidence uploads and printable report.',locked:true},
   {id:'training',icon:'👥',name:'Staff Training',desc:'Track staff certifications, expiry dates, and compliance across the whole team.',locked:false},
@@ -655,6 +748,19 @@ function render(){
     else renderCompliance(app)
   }
   else if(G.screen==='temps') renderTemps(app)
+  else if(G.screen==='allergens') renderAllergens(app)
+  else if(G.screen==='delivery') renderDeliveryLog(app)
+  else if(G.screen==='incident') renderIncidentLog(app)
+  else if(G.screen==='cleaning') renderCleaning(app)
+  else if(G.screen==='stock') renderStockLog(app)
+  else if(G.screen==='maint') renderMaintenance(app)
+  else if(G.screen==='cash'){
+    if(!G.unlocked.cash){renderPin('cash',app)}
+    else renderCashUp(app)
+  }
+  else if(G.screen==='visitor') renderVisitorLog(app)
+  else if(G.screen==='handover') renderHandover(app)
+  else if(G.screen==='suppliers') renderSuppliers(app)
   else if(G.screen==='power') renderPowerTest(app)
   else if(G.screen==='fire'){
     if(!G.unlocked.fire){renderPin('fire',app)}
@@ -1038,15 +1144,32 @@ function renderTemps(app){
     const trow=el('div','temp-row')
     const tw=el('div','temp-wrap')
     const tinp=el('input','temp-inp'+(s!=='empty'?' '+s:''))
-    tinp.type='text';tinp.inputMode='decimal';tinp.placeholder='0.0'
+    tinp.type='number';tinp.step='0.1';tinp.placeholder='0.0'
     tinp.value=val!==undefined?val:'';if(isLogged)tinp.disabled=true
     tinp.oninput=e=>{
-      const raw=e.target.value
-      if(raw===''||raw==='-'||/^-?\d*\.?\d*$/.test(raw)){T.readings[unit.id]=raw;render()}
-      else e.target.value=val!==undefined?val:''
+      T.readings[unit.id]=e.target.value
+      // Only re-render for status colour update if we have a valid number
+      const n=parseFloat(e.target.value)
+      if(!isNaN(n)) render()
     }
     const tu=el('span','temp-unit');tu.textContent='°C'
-    tw.appendChild(tinp);tw.appendChild(tu)
+    // Quick negative toggle for freezers (mobile keyboards often hide minus)
+    const quickRow=el('div','temp-quick-row')
+    if(unit.type==='freezer'){
+      const negBtn=el('button','temp-quick-btn')
+      negBtn.type='button';negBtn.textContent='+/−'
+      negBtn.title='Toggle negative'
+      negBtn.onclick=()=>{
+        const cur=String(T.readings[unit.id]||'')
+        if(cur===''||cur==='-'){T.readings[unit.id]='-';tinp.value='-';tinp.focus();return}
+        if(cur.startsWith('-')) T.readings[unit.id]=cur.slice(1)
+        else T.readings[unit.id]='-'+cur
+        tinp.value=T.readings[unit.id]
+        render()
+      }
+      quickRow.appendChild(negBtn)
+    }
+    tw.appendChild(tinp);tw.appendChild(tu);if(unit.type==='freezer')tw.appendChild(quickRow)
 
     const chipMap={ok:'chip-ok ✓ OK',warn:'chip-warn ⚠ CHECK',danger:'chip-danger ✕ ACTION',empty:'chip-empty —'}
     const [chipCls,chipTxt]=(chipMap[s]||chipMap.empty).split(' ').reduce((a,v,i)=>i===0?[v,a[1]]:a[0].length&&i>0?[a[0],a[1]+' '+v]:[v,''],['',' '])
@@ -3185,6 +3308,843 @@ function printPremisesHistory(){
   if(ph) ph.style.display='block'
   window.print()
   if(ph) ph.style.display=''
+}
+
+// ============================================================
+// ============ NEW MODULES (Tier 1-3) ============
+// ============================================================
+
+// 14 UK statutory allergens (Natasha's Law)
+const UK_ALLERGENS=[
+  {id:'celery',label:'Celery'},
+  {id:'gluten',label:'Cereals (gluten)'},
+  {id:'crustaceans',label:'Crustaceans'},
+  {id:'eggs',label:'Eggs'},
+  {id:'fish',label:'Fish'},
+  {id:'lupin',label:'Lupin'},
+  {id:'milk',label:'Milk'},
+  {id:'molluscs',label:'Molluscs'},
+  {id:'mustard',label:'Mustard'},
+  {id:'nuts',label:'Tree nuts'},
+  {id:'peanuts',label:'Peanuts'},
+  {id:'sesame',label:'Sesame'},
+  {id:'soya',label:'Soya'},
+  {id:'sulphites',label:'Sulphur dioxide & sulphites'},
+]
+
+// Shared module helpers
+function modHero(title,sub,statsArr){
+  const hero=el('div','mod-hero')
+  hero.innerHTML=`<div class="mod-title">${title}</div><div class="mod-sub">${sub}</div>`
+  if(statsArr&&statsArr.length){
+    const sr=el('div','mod-stat-row')
+    statsArr.forEach(s=>{
+      const sd=el('div','mod-stat')
+      sd.innerHTML=`<div class="mod-stat-num" style="color:${s.color||'#fff'}">${s.value}</div><div class="mod-stat-lbl">${s.label}</div>`
+      sr.appendChild(sd)
+    })
+    hero.appendChild(sr)
+  }
+  return hero
+}
+function modTabs(items,active,onClick){
+  const t=el('div','mod-tabs')
+  items.forEach(i=>{
+    const b=el('button','mod-tab'+(active===i.id?' on':''))
+    b.textContent=i.label
+    b.onclick=()=>onClick(i.id)
+    t.appendChild(b)
+  })
+  return t
+}
+function modField(lbl,inputEl,full){
+  const w=el('div','mod-field'+(full?' full':''))
+  const l=el('div','mod-field-lbl');l.textContent=lbl
+  w.appendChild(l);w.appendChild(inputEl);return w
+}
+function modInput(value,onInput,placeholder,type){
+  const i=el('input','mod-input');i.type=type||'text';i.value=value||'';if(placeholder)i.placeholder=placeholder
+  i.oninput=e=>onInput(e.target.value);return i
+}
+function modTextarea(value,onInput,placeholder){
+  const t=el('textarea','mod-textarea');t.value=value||'';if(placeholder)t.placeholder=placeholder
+  t.oninput=e=>onInput(e.target.value);return t
+}
+function modSelect(value,options,onChange){
+  const s=el('select','mod-select')
+  options.forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;if(value===v)o.selected=true;s.appendChild(o)})
+  s.onchange=e=>onChange(e.target.value);return s
+}
+async function modUploadPhoto(file,bucket){
+  const fileName=`${Date.now()}-${(file.name||'photo').replace(/\s+/g,'-')}`
+  const{error}=await db.storage.from(bucket).upload(fileName,file)
+  if(error)throw error
+  const{data}=db.storage.from(bucket).getPublicUrl(fileName)
+  return data.publicUrl
+}
+
+// ============================================================
+// 1. ALLERGEN & RECIPE MANAGER
+// ============================================================
+async function loadAllergens(){
+  G.allergen.loading=true;render()
+  try{
+    const{data}=await db.from('allergen_items').select('*').order('item_name',{ascending:true})
+    G.allergen.items=data||[]
+    G.allergen.loaded=true
+  }catch(e){console.error(e);G.allergen.items=[]}
+  G.allergen.loading=false;render()
+}
+function renderAllergens(app){
+  const A=G.allergen
+  if(!A.loaded&&!A.loading) loadAllergens()
+
+  app.appendChild(modHero('<span class="r">ALLERGEN</span> & RECIPE MANAGER','Natasha\u2019s Law compliance — 14 UK allergens',[
+    {value:A.items.length,label:'Items'},
+    {value:A.items.filter(i=>i.allergens&&i.allergens.length).length,label:'With Allergens'},
+    {value:A.items.filter(i=>!i.last_reviewed||(daysUntil(i.last_reviewed)<-180)).length,label:'Need Review',color:'#c8102e'},
+  ]))
+  app.appendChild(modTabs([{id:'menu',label:'Menu Items'},{id:'add',label:A.editId?'Edit Item':'Add Item'}],A.tab,t=>{A.tab=t;if(t==='add'&&!A.draft)A.draft={item_name:'',category:'food',description:'',allergens:[],ingredients:'',last_reviewed:todayStr()};render()}))
+
+  const body=el('div','mod-body')
+  if(A.tab==='menu'){
+    if(A.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    if(!A.items.length){body.innerHTML='<div class="mod-empty">No menu items yet. Add some.</div>';app.appendChild(body);return}
+    const sr=el('div','mod-search-row')
+    sr.appendChild(modInput(A.search,v=>{A.search=v;render()},'Search items…'))
+    const allergenOpts=[['all','All allergens'],...UK_ALLERGENS.map(a=>[a.id,a.label])]
+    sr.appendChild(modSelect(A.filterAllergen,allergenOpts,v=>{A.filterAllergen=v;render()}))
+    body.appendChild(sr)
+
+    let items=A.items
+    if(A.search) items=items.filter(i=>(i.item_name||'').toLowerCase().includes(A.search.toLowerCase()))
+    if(A.filterAllergen!=='all') items=items.filter(i=>(i.allergens||[]).includes(A.filterAllergen))
+
+    items.forEach(it=>{
+      const stale=it.last_reviewed&&daysUntil(it.last_reviewed)<-180
+      const card=el('div','mod-card'+(stale?' high':' ok'))
+      const allergens=(it.allergens||[]).map(a=>UK_ALLERGENS.find(u=>u.id===a)?.label||a)
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${it.item_name||'Untitled'}</div><div class="mod-card-sub">${it.category||'food'} · reviewed ${fmtDate(it.last_reviewed)}</div></div></div>
+        <div class="mod-card-body">${it.description||''}</div>
+        <div class="mod-card-meta">${allergens.length?allergens.map(a=>`<span class="mod-pill red">${a}</span>`).join(''):'<span class="mod-pill green">No allergens</span>'}</div>
+        ${it.ingredients?`<div class="mod-card-body" style="font-size:0.7rem;color:#666;margin-top:8px"><strong style="color:#888">Ingredients:</strong> ${it.ingredients}</div>`:''}`
+      card.onclick=()=>{A.editId=it.id;A.draft={...it,allergens:it.allergens||[]};A.tab='add';render()}
+      body.appendChild(card)
+    })
+  }else{
+    const d=A.draft
+    const form=el('div','mod-form')
+    const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Item name',modInput(d.item_name,v=>d.item_name=v,'e.g. Cod & Chips')))
+    grid.appendChild(modField('Category',modSelect(d.category,[['food','Food'],['drink','Drink'],['side','Side'],['sauce','Sauce/Dip'],['dessert','Dessert']],v=>d.category=v)))
+    grid.appendChild(modField('Last reviewed',modInput(d.last_reviewed,v=>d.last_reviewed=v,'','date')))
+    grid.appendChild(modField('Description',modTextarea(d.description,v=>d.description=v,'Brief description')))
+    grid.appendChild(modField('Ingredients (comma separated)',modTextarea(d.ingredients,v=>d.ingredients=v,'cod, batter, salt, vegetable oil…'),true))
+    form.appendChild(grid)
+
+    const ah=el('div','mod-section-hdr');ah.textContent='Contains the following allergens'
+    form.appendChild(ah)
+    const ag=el('div','mod-allergen-grid')
+    UK_ALLERGENS.forEach(a=>{
+      const c=el('div','mod-allergen-chip'+(d.allergens.includes(a.id)?' on':''))
+      c.textContent=a.label
+      c.onclick=()=>{
+        const i=d.allergens.indexOf(a.id)
+        if(i>=0)d.allergens.splice(i,1);else d.allergens.push(a.id)
+        render()
+      }
+      ag.appendChild(c)
+    })
+    form.appendChild(ag)
+
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent=A.editId?'Save Changes':'Add Item'
+    save.onclick=async()=>{
+      if(!d.item_name.trim()){alert('Item name required');return}
+      try{
+        const payload={item_name:d.item_name.trim(),category:d.category,description:d.description||null,allergens:d.allergens,ingredients:d.ingredients||null,last_reviewed:d.last_reviewed||todayStr()}
+        if(A.editId){const{error}=await db.from('allergen_items').update(payload).eq('id',A.editId);if(error)throw error}
+        else{const{error}=await db.from('allergen_items').insert(payload);if(error)throw error}
+        A.editId=null;A.draft=null;A.tab='menu';A.loaded=false;loadAllergens()
+      }catch(e){alert('Error: '+e.message)}
+    }
+    const cancel=el('button','mod-btn mod-btn-out');cancel.textContent='Cancel'
+    cancel.onclick=()=>{A.editId=null;A.draft=null;A.tab='menu';render()}
+    acts.appendChild(save);acts.appendChild(cancel)
+    if(A.editId){
+      const del=el('button','mod-btn mod-btn-out');del.textContent='Delete';del.style.color='#c8102e';del.style.borderColor='#c8102e'
+      del.onclick=async()=>{if(!confirm('Delete this item?'))return;try{await db.from('allergen_items').delete().eq('id',A.editId);A.editId=null;A.draft=null;A.tab='menu';A.loaded=false;loadAllergens()}catch(e){alert(e.message)}}
+      acts.appendChild(del)
+    }
+    form.appendChild(acts)
+    body.appendChild(form)
+  }
+  app.appendChild(body)
+}
+
+// 2. DELIVERY LOG
+async function loadDeliveries(){
+  G.delivery.loading=true;render()
+  try{
+    const{data}=await db.from('deliveries').select('*').order('delivery_date',{ascending:false}).limit(200)
+    G.delivery.items=data||[];G.delivery.loaded=true
+  }catch(e){console.error(e);G.delivery.items=[]}
+  G.delivery.loading=false;render()
+}
+function renderDeliveryLog(app){
+  const D=G.delivery
+  if(!D.loaded&&!D.loading) loadDeliveries()
+  const today=todayStr()
+  const todayCount=D.items.filter(i=>i.delivery_date===today).length
+  const flagged=D.items.filter(i=>i.is_chilled&&i.temp_chilled!==null&&i.temp_chilled!==undefined&&Number(i.temp_chilled)>8).length
+
+  app.appendChild(modHero('<span class="r">DELIVERY</span> LOG','Goods-in checks — temps, batches, traceability',[
+    {value:todayCount,label:'Today'},
+    {value:D.items.length,label:'Logged'},
+    {value:flagged,label:'Temp Fail',color:flagged?'#c8102e':'#4caf50'},
+  ]))
+  app.appendChild(modTabs([{id:'new',label:'Log Delivery'},{id:'history',label:'History'}],D.tab,t=>{D.tab=t;render()}))
+
+  const body=el('div','mod-body')
+  if(D.tab==='new'){
+    const d=D.draft
+    if(D.saved){const b=el('div','mod-banner green');b.textContent='✓ Delivery logged successfully';body.appendChild(b)}
+    const form=el('div','mod-form')
+    const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Supplier',modInput(d.supplier,v=>d.supplier=v,'e.g. JJ Foods')))
+    grid.appendChild(modField('Delivery date',modInput(d.delivery_date,v=>d.delivery_date=v,'','date')))
+    grid.appendChild(modField('Received by',modInput(d.received_by,v=>d.received_by=v,'Your name')))
+    const chilledWrap=el('div','mod-field')
+    const cl=el('label','mod-checkbox')
+    const ci=document.createElement('input');ci.type='checkbox';ci.checked=d.is_chilled;ci.onchange=e=>{d.is_chilled=e.target.checked;render()}
+    const cs=el('span','mod-checkbox-lbl');cs.textContent='Chilled / frozen delivery'
+    cl.appendChild(ci);cl.appendChild(cs);chilledWrap.appendChild(cl);grid.appendChild(chilledWrap)
+    if(d.is_chilled){grid.appendChild(modField('Temperature on arrival (°C)',modInput(d.temp_chilled,v=>d.temp_chilled=v,'e.g. 4','number')))}
+    grid.appendChild(modField('Batch numbers / order ref',modInput(d.batch_numbers,v=>d.batch_numbers=v,'e.g. INV-12345')))
+    grid.appendChild(modField('Notes',modTextarea(d.notes,v=>d.notes=v,'Any issues, damages, missing items'),true))
+    const photoField=el('div','mod-field full')
+    const pl=el('div','mod-field-lbl');pl.textContent='Photo of delivery (optional)'
+    const pi=el('input','mod-input');pi.type='file';pi.accept='image/*'
+    pi.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const url=await modUploadPhoto(f,'power-test-photos');d.photo_url=url;render()}catch(err){alert('Upload error: '+err.message)}}
+    photoField.appendChild(pl);photoField.appendChild(pi)
+    if(d.photo_url){const im=document.createElement('img');im.src=d.photo_url;im.style.cssText='max-width:160px;margin-top:8px';photoField.appendChild(im)}
+    grid.appendChild(photoField)
+    form.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent=D.saving?'Saving…':'Save Delivery';save.disabled=D.saving
+    save.onclick=async()=>{
+      if(!d.supplier.trim()||!d.received_by.trim()){alert('Supplier and Received by are required');return}
+      D.saving=true;render()
+      try{
+        const payload={supplier:d.supplier.trim(),received_by:d.received_by.trim(),delivery_date:d.delivery_date,is_chilled:d.is_chilled,temp_chilled:d.is_chilled&&d.temp_chilled!==''?parseFloat(d.temp_chilled):null,batch_numbers:d.batch_numbers||null,notes:d.notes||null,photo_url:d.photo_url||null}
+        const{error}=await db.from('deliveries').insert(payload);if(error)throw error
+        D.saved=true
+        D.draft={supplier:'',received_by:'',temp_chilled:'',batch_numbers:'',notes:'',photo_url:'',is_chilled:true,delivery_date:todayStr()}
+        D.loaded=false;loadDeliveries()
+      }catch(e){alert('Error: '+e.message)}
+      D.saving=false;render()
+    }
+    acts.appendChild(save);form.appendChild(acts)
+    body.appendChild(form)
+  }else{
+    if(D.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    if(!D.items.length){body.innerHTML='<div class="mod-empty">No deliveries logged yet</div>';app.appendChild(body);return}
+    D.items.forEach(it=>{
+      const fail=it.is_chilled&&it.temp_chilled!==null&&Number(it.temp_chilled)>8
+      const card=el('div','mod-card'+(fail?' high':' ok'))
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${it.supplier}</div><div class="mod-card-sub">${fmtDate(it.delivery_date)} · ${it.received_by||'?'}</div></div>${it.is_chilled?`<span class="mod-pill ${fail?'red':'green'}">${it.temp_chilled!==null?it.temp_chilled+'°C':'No temp'}</span>`:'<span class="mod-pill">Ambient</span>'}</div>
+        ${it.batch_numbers?`<div class="mod-card-body"><strong>Batch:</strong> ${it.batch_numbers}</div>`:''}
+        ${it.notes?`<div class="mod-card-body">${it.notes}</div>`:''}
+        ${it.photo_url?`<div style="margin-top:8px"><a href="${it.photo_url}" target="_blank"><img src="${it.photo_url}" style="max-width:160px"></a></div>`:''}`
+      body.appendChild(card)
+    })
+  }
+  app.appendChild(body)
+}
+
+// 3. INCIDENT LOG
+async function loadIncidents(){
+  G.incident.loading=true;render()
+  try{
+    const{data}=await db.from('incidents').select('*').order('incident_date',{ascending:false}).limit(200)
+    G.incident.items=data||[];G.incident.loaded=true
+  }catch(e){console.error(e);G.incident.items=[]}
+  G.incident.loading=false;render()
+}
+function renderIncidentLog(app){
+  const I=G.incident
+  if(!I.loaded&&!I.loading) loadIncidents()
+  const riddorCount=I.items.filter(i=>i.riddor).length
+  const last30=I.items.filter(i=>i.incident_date&&daysUntil(i.incident_date)>-30).length
+
+  app.appendChild(modHero('<span class="r">INCIDENT</span> LOG','Accidents · near misses · complaints · refusals',[
+    {value:I.items.length,label:'Total'},
+    {value:last30,label:'Last 30 Days'},
+    {value:riddorCount,label:'RIDDOR',color:riddorCount?'#c8102e':'#4caf50'},
+  ]))
+  app.appendChild(modTabs([{id:'new',label:'Log Incident'},{id:'history',label:'History'}],I.tab,t=>{I.tab=t;render()}))
+
+  const body=el('div','mod-body')
+  if(I.tab==='new'){
+    const d=I.draft
+    if(I.saved){const b=el('div','mod-banner green');b.textContent='✓ Incident logged';body.appendChild(b)}
+    const form=el('div','mod-form')
+    const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Type',modSelect(d.incident_type,[['slip','Slip / trip / fall'],['burn','Burn / scald'],['cut','Cut / laceration'],['accident','Other accident'],['nearmiss','Near miss'],['complaint','Customer complaint'],['refusal','Service refusal'],['theft','Theft / loss'],['violence','Violence / threats'],['other','Other']],v=>d.incident_type=v)))
+    grid.appendChild(modField('Location',modInput(d.location,v=>d.location=v,'e.g. Kitchen, Bar, Floor')))
+    grid.appendChild(modField('Date',modInput(d.incident_date,v=>d.incident_date=v,'','date')))
+    grid.appendChild(modField('Time',modInput(d.incident_time,v=>d.incident_time=v,'','time')))
+    grid.appendChild(modField('Description (what happened)',modTextarea(d.description,v=>d.description=v,'Be specific'),true))
+    grid.appendChild(modField('Action taken',modTextarea(d.action_taken,v=>d.action_taken=v,'First aid, eviction, refund, escalation…'),true))
+    grid.appendChild(modField('Injured / affected person',modInput(d.injured_name,v=>d.injured_name=v,'Name')))
+    grid.appendChild(modField('Their role / customer?',modInput(d.injured_role,v=>d.injured_role=v,'Staff / customer / contractor')))
+    grid.appendChild(modField('Witness name',modInput(d.witness_name,v=>d.witness_name=v,'')))
+    grid.appendChild(modField('Witness contact',modInput(d.witness_contact,v=>d.witness_contact=v,'Phone / email')))
+    grid.appendChild(modField('Signed off by',modInput(d.signed_by,v=>d.signed_by=v,'Manager name')))
+    const riddorWrap=el('div','mod-field')
+    const rl=el('label','mod-checkbox')
+    const ri=document.createElement('input');ri.type='checkbox';ri.checked=d.riddor;ri.onchange=e=>d.riddor=e.target.checked
+    const rs=el('span','mod-checkbox-lbl');rs.textContent='RIDDOR reportable'
+    rl.appendChild(ri);rl.appendChild(rs);riddorWrap.appendChild(rl);grid.appendChild(riddorWrap)
+    const photoField=el('div','mod-field full')
+    const pl=el('div','mod-field-lbl');pl.textContent='Photo (optional)'
+    const pi=el('input','mod-input');pi.type='file';pi.accept='image/*'
+    pi.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const url=await modUploadPhoto(f,'power-test-photos');d.photo_url=url;render()}catch(err){alert(err.message)}}
+    photoField.appendChild(pl);photoField.appendChild(pi)
+    if(d.photo_url){const im=document.createElement('img');im.src=d.photo_url;im.style.cssText='max-width:160px;margin-top:8px';photoField.appendChild(im)}
+    grid.appendChild(photoField)
+    form.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent=I.saving?'Saving…':'Log Incident';save.disabled=I.saving
+    save.onclick=async()=>{
+      if(!d.description.trim()||!d.signed_by.trim()){alert('Description and Signed off by are required');return}
+      I.saving=true;render()
+      try{
+        const payload={incident_type:d.incident_type,incident_date:d.incident_date,incident_time:d.incident_time,location:d.location||null,description:d.description,action_taken:d.action_taken||null,riddor:d.riddor,witness_name:d.witness_name||null,witness_contact:d.witness_contact||null,injured_name:d.injured_name||null,injured_role:d.injured_role||null,signed_by:d.signed_by,photo_url:d.photo_url||null}
+        const{error}=await db.from('incidents').insert(payload);if(error)throw error
+        I.saved=true
+        I.draft={incident_type:'slip',incident_date:todayStr(),incident_time:new Date().toTimeString().slice(0,5),location:'',description:'',action_taken:'',riddor:false,witness_name:'',witness_contact:'',injured_name:'',injured_role:'',signed_by:'',photo_url:''}
+        I.loaded=false;loadIncidents()
+      }catch(e){alert(e.message)}
+      I.saving=false;render()
+    }
+    acts.appendChild(save);form.appendChild(acts)
+    body.appendChild(form)
+  }else{
+    if(I.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    if(!I.items.length){body.innerHTML='<div class="mod-empty">No incidents logged</div>';app.appendChild(body);return}
+    I.items.forEach(it=>{
+      const card=el('div','mod-card'+(it.riddor?' high':' warn'))
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${(it.incident_type||'incident').toUpperCase()} · ${it.location||'-'}</div><div class="mod-card-sub">${fmtDate(it.incident_date)} ${it.incident_time||''} · ${it.signed_by||'?'}</div></div>${it.riddor?'<span class="mod-pill red">⚠ RIDDOR</span>':''}</div>
+        <div class="mod-card-body">${it.description||''}</div>
+        ${it.action_taken?`<div class="mod-card-body"><strong style="color:#888">Action:</strong> ${it.action_taken}</div>`:''}
+        ${it.injured_name?`<div class="mod-card-meta"><span class="mod-pill">${it.injured_role||'?'}: ${it.injured_name}</span></div>`:''}
+        ${it.witness_name?`<div class="mod-card-meta"><span class="mod-pill">Witness: ${it.witness_name}${it.witness_contact?' · '+it.witness_contact:''}</span></div>`:''}
+        ${it.photo_url?`<div style="margin-top:8px"><a href="${it.photo_url}" target="_blank"><img src="${it.photo_url}" style="max-width:160px"></a></div>`:''}`
+      body.appendChild(card)
+    })
+  }
+  app.appendChild(body)
+}
+
+// 4. CLEANING SCHEDULE
+const CLEANING_TASKS=[
+  {id:'cl-fryer',title:'Fryer deep clean',area:'kitchen',freq:'daily'},
+  {id:'cl-pass',title:'Pass surfaces',area:'kitchen',freq:'daily'},
+  {id:'cl-floors',title:'Mop all floors',area:'site',freq:'daily'},
+  {id:'cl-toilets',title:'Toilet deep clean',area:'toilets',freq:'daily'},
+  {id:'cl-bartop',title:'Bar top sanitise',area:'bar',freq:'daily'},
+  {id:'cl-tables',title:'Tables wiped & sanitised',area:'floor',freq:'daily'},
+  {id:'cl-canopy',title:'Canopy filter clean',area:'kitchen',freq:'weekly'},
+  {id:'cl-fridges',title:'Fridge interior clean (rotation)',area:'kitchen',freq:'weekly'},
+  {id:'cl-ice',title:'Ice machine deep clean',area:'bar',freq:'weekly'},
+  {id:'cl-lines',title:'Beer line clean',area:'cellar',freq:'weekly'},
+  {id:'cl-skirting',title:'Skirting boards & walls',area:'floor',freq:'weekly'},
+  {id:'cl-grout',title:'Toilet grouting scrub',area:'toilets',freq:'weekly'},
+  {id:'cl-extraction',title:'Extraction system deep clean',area:'kitchen',freq:'monthly'},
+  {id:'cl-cellar',title:'Cellar full sanitation',area:'cellar',freq:'monthly'},
+  {id:'cl-windows',title:'Internal windows',area:'floor',freq:'monthly'},
+  {id:'cl-storage',title:'Dry store deep clean',area:'kitchen',freq:'monthly'},
+  {id:'cl-canopy-q',title:'Professional canopy/duct clean (TR19)',area:'kitchen',freq:'quarterly'},
+  {id:'cl-pest',title:'Full pest inspection',area:'site',freq:'quarterly'},
+]
+async function loadCleaning(){
+  G.cleaning.loading=true;render()
+  try{
+    const{data}=await db.from('cleaning_log').select('*').order('completed_at',{ascending:false}).limit(500)
+    G.cleaning.tasks=data||[];G.cleaning.loaded=true
+  }catch(e){console.error(e);G.cleaning.tasks=[]}
+  G.cleaning.loading=false;render()
+}
+function lastDoneFor(taskId){const recs=G.cleaning.tasks.filter(t=>t.task_id===taskId);return recs[0]||null}
+function isOverdue(task){const last=lastDoneFor(task.id);if(!last)return true;const days={daily:1,weekly:7,monthly:30,quarterly:90}[task.freq]||30;const diff=(new Date()-new Date(last.completed_at))/(86400000);return diff>days}
+function renderCleaning(app){
+  const C=G.cleaning
+  if(!C.loaded&&!C.loading) loadCleaning()
+  const overdue=CLEANING_TASKS.filter(t=>isOverdue(t)).length
+  app.appendChild(modHero('<span class="r">CLEANING</span> SCHEDULE','Recurring deep cleans & rotation',[
+    {value:CLEANING_TASKS.length,label:'Tasks'},
+    {value:overdue,label:'Overdue',color:overdue?'#c8102e':'#4caf50'},
+    {value:CLEANING_TASKS.length-overdue,label:'Up To Date',color:'#4caf50'},
+  ]))
+  app.appendChild(modTabs([{id:'today',label:'Tasks'},{id:'history',label:'History'}],C.tab,t=>{C.tab=t;render()}))
+  const body=el('div','mod-body')
+  if(C.tab==='today'){
+    if(C.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    const sf=el('div','mod-form');sf.appendChild(modField('Your name (required to mark tasks done)',modInput(C.signedBy,v=>C.signedBy=v,'Type your name')));body.appendChild(sf)
+    ;['daily','weekly','monthly','quarterly'].forEach(freq=>{
+      const tasks=CLEANING_TASKS.filter(t=>t.freq===freq)
+      const h=el('div','mod-section-hdr');h.textContent=freq.charAt(0).toUpperCase()+freq.slice(1);body.appendChild(h)
+      tasks.forEach(t=>{
+        const last=lastDoneFor(t.id);const overd=isOverdue(t)
+        const card=el('div','mod-card '+(overd?'high':'ok'))
+        card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${t.title}</div><div class="mod-card-sub">${t.area} · ${t.freq}</div></div><span class="mod-pill ${overd?'red':'green'}">${overd?'Due':'OK'}</span></div>
+          <div class="mod-card-body">Last done: ${last?fmtDate(last.completed_at)+' by '+(last.signed_by||'?'):'Never'}</div>`
+        const acts=el('div','mod-actions')
+        const done=el('button','mod-btn');done.textContent='Mark Done';done.disabled=!!C.completing[t.id]
+        done.onclick=async(e)=>{e.stopPropagation();if(!C.signedBy.trim()){alert('Enter your name first');return}
+          C.completing[t.id]=true;render()
+          try{
+            const{error}=await db.from('cleaning_log').insert({task_id:t.id,task_title:t.title,area:t.area,freq:t.freq,signed_by:C.signedBy.trim(),completed_at:new Date().toISOString()})
+            if(error)throw error
+            C.loaded=false;loadCleaning()
+          }catch(err){alert(err.message)}
+          delete C.completing[t.id];render()
+        }
+        acts.appendChild(done);card.appendChild(acts);body.appendChild(card)
+      })
+    })
+  }else{
+    if(!C.tasks.length){body.innerHTML='<div class="mod-empty">No history yet</div>';app.appendChild(body);return}
+    C.tasks.forEach(t=>{
+      const card=el('div','mod-card ok')
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${t.task_title}</div><div class="mod-card-sub">${t.area} · ${t.freq}</div></div><span class="mod-pill green">${fmtDate(t.completed_at)}</span></div>
+        <div class="mod-card-body">Signed by: ${t.signed_by||'?'}</div>`
+      body.appendChild(card)
+    })
+  }
+  app.appendChild(body)
+}
+
+// 5. STOCK & WASTAGE
+async function loadStock(){
+  G.stock.loading=true;render()
+  try{
+    const{data}=await db.from('wastage_log').select('*').order('waste_date',{ascending:false}).limit(500)
+    G.stock.items=data||[];G.stock.loaded=true
+  }catch(e){console.error(e);G.stock.items=[]}
+  G.stock.loading=false;render()
+}
+function renderStockLog(app){
+  const S=G.stock
+  if(!S.loaded&&!S.loading) loadStock()
+  const period=parseInt(S.filterPeriod,10)||7
+  const recent=S.items.filter(i=>{const d=daysUntil(i.waste_date);return d!==null&&d>-period})
+  const totalCost=recent.reduce((sum,i)=>sum+(parseFloat(i.cost)||0),0)
+  app.appendChild(modHero('<span class="r">STOCK</span> & WASTAGE','Track wastage by category and cost',[
+    {value:'£'+totalCost.toFixed(0),label:`Last ${period}d`,color:'#c8102e'},
+    {value:recent.length,label:'Entries'},
+    {value:S.items.length,label:'All Time'},
+  ]))
+  app.appendChild(modTabs([{id:'new',label:'Log Wastage'},{id:'history',label:'History'}],S.tab,t=>{S.tab=t;render()}))
+  const body=el('div','mod-body')
+  if(S.tab==='new'){
+    const d=S.draft
+    const form=el('div','mod-form');const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Item',modInput(d.item,v=>d.item=v,'e.g. Cod fillet')))
+    grid.appendChild(modField('Category',modSelect(d.category,[['food','Food'],['drink','Drink'],['breakage','Breakage / glass'],['packaging','Packaging'],['other','Other']],v=>d.category=v)))
+    grid.appendChild(modField('Quantity',modInput(d.quantity,v=>d.quantity=v,'e.g. 2','number')))
+    grid.appendChild(modField('Unit',modSelect(d.unit,[['kg','kg'],['g','g'],['l','litres'],['ml','ml'],['units','units'],['bottles','bottles']],v=>d.unit=v)))
+    grid.appendChild(modField('Cost (£)',modInput(d.cost,v=>d.cost=v,'e.g. 12.50','number')))
+    grid.appendChild(modField('Reason',modSelect(d.reason,[['spoilage','Spoilage / out of date'],['breakage','Breakage'],['overcooked','Overcooked / burnt'],['mistake','Order mistake'],['return','Customer return'],['theft','Suspected theft'],['training','Training / staff meal'],['other','Other']],v=>d.reason=v)))
+    grid.appendChild(modField('Date',modInput(d.waste_date,v=>d.waste_date=v,'','date')))
+    grid.appendChild(modField('Signed by',modInput(d.signed_by,v=>d.signed_by=v,'Your name')))
+    grid.appendChild(modField('Notes',modTextarea(d.notes,v=>d.notes=v,''),true))
+    form.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent=S.saving?'Saving…':'Log Wastage';save.disabled=S.saving
+    save.onclick=async()=>{
+      if(!d.item.trim()||!d.signed_by.trim()){alert('Item and Signed by required');return}
+      S.saving=true;render()
+      try{
+        const payload={item:d.item.trim(),category:d.category,quantity:d.quantity?parseFloat(d.quantity):null,unit:d.unit,cost:d.cost?parseFloat(d.cost):null,reason:d.reason,notes:d.notes||null,signed_by:d.signed_by,waste_date:d.waste_date}
+        const{error}=await db.from('wastage_log').insert(payload);if(error)throw error
+        S.draft={item:'',category:'food',quantity:'',unit:'kg',cost:'',reason:'spoilage',notes:'',signed_by:d.signed_by,waste_date:todayStr()}
+        S.loaded=false;loadStock()
+      }catch(e){alert(e.message)}
+      S.saving=false;render()
+    }
+    acts.appendChild(save);form.appendChild(acts);body.appendChild(form)
+  }else{
+    if(S.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    const sr=el('div','mod-search-row')
+    sr.appendChild(modSelect(S.filterCat,[['all','All categories'],['food','Food'],['drink','Drink'],['breakage','Breakage'],['packaging','Packaging'],['other','Other']],v=>{S.filterCat=v;render()}))
+    sr.appendChild(modSelect(S.filterPeriod,[['7','Last 7 days'],['30','Last 30 days'],['90','Last 90 days'],['9999','All time']],v=>{S.filterPeriod=v;render()}))
+    body.appendChild(sr)
+    let items=S.items
+    if(S.filterCat!=='all') items=items.filter(i=>i.category===S.filterCat)
+    if(S.filterPeriod!=='9999'){const days=parseInt(S.filterPeriod,10);items=items.filter(i=>{const d=daysUntil(i.waste_date);return d!==null&&d>-days})}
+    if(!items.length){const e=el('div','mod-empty');e.textContent='No entries';body.appendChild(e);app.appendChild(body);return}
+    items.forEach(it=>{
+      const card=el('div','mod-card warn')
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${it.item}</div><div class="mod-card-sub">${fmtDate(it.waste_date)} · ${it.signed_by||'?'} · ${it.reason}</div></div><span class="mod-pill amber">£${(parseFloat(it.cost)||0).toFixed(2)}</span></div>
+        <div class="mod-card-body">${it.quantity||'?'} ${it.unit||''} · ${it.category}</div>
+        ${it.notes?`<div class="mod-card-body" style="color:#666">${it.notes}</div>`:''}`
+      body.appendChild(card)
+    })
+  }
+  app.appendChild(body)
+}
+
+// 6. MAINTENANCE
+async function loadMaint(){
+  G.maint.loading=true;render()
+  try{
+    const{data}=await db.from('maintenance').select('*').order('created_at',{ascending:false}).limit(300)
+    G.maint.items=data||[];G.maint.loaded=true
+  }catch(e){console.error(e);G.maint.items=[]}
+  G.maint.loading=false;render()
+}
+function renderMaintenance(app){
+  const M=G.maint
+  if(!M.loaded&&!M.loading) loadMaint()
+  const open=M.items.filter(i=>i.status!=='resolved').length
+  const overdueCerts=M.items.filter(i=>i.due_date&&daysUntil(i.due_date)<0&&i.status!=='resolved').length
+  const totalCost=M.items.reduce((s,i)=>s+(parseFloat(i.cost)||0),0)
+  app.appendChild(modHero('<span class="r">MAINTENANCE</span>','Repairs · contractors · PAT · gas safe',[
+    {value:open,label:'Open',color:open?'#ff9800':'#4caf50'},
+    {value:overdueCerts,label:'Overdue',color:overdueCerts?'#c8102e':'#4caf50'},
+    {value:'£'+totalCost.toFixed(0),label:'Total Spend'},
+  ]))
+  app.appendChild(modTabs([{id:'open',label:'Open'},{id:'all',label:'All'},{id:'new',label:M.editId?'Edit':'Add Job'}],M.tab,t=>{M.tab=t;if(t==='new'&&!M.editId)M.draft={title:'',category:'kitchen',priority:'medium',description:'',contractor:'',cost:'',status:'reported',due_date:'',resolved_date:'',reported_by:'',photo_url:''};render()}))
+  const body=el('div','mod-body')
+  if(M.tab==='new'){
+    const d=M.draft
+    const form=el('div','mod-form');const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Title',modInput(d.title,v=>d.title=v,'e.g. Fryer 2 thermostat fault')))
+    grid.appendChild(modField('Category',modSelect(d.category,[['kitchen','Kitchen kit'],['bar','Bar kit'],['cellar','Cellar'],['plant','Plant room'],['floor','Floor / building'],['toilet','Toilets'],['exterior','Exterior'],['cert','Certification (PAT/Gas Safe/etc)'],['other','Other']],v=>d.category=v)))
+    grid.appendChild(modField('Priority',modSelect(d.priority,[['low','Low'],['medium','Medium'],['high','High'],['urgent','Urgent (kit down)']],v=>d.priority=v)))
+    grid.appendChild(modField('Status',modSelect(d.status,[['reported','Reported'],['in_progress','In progress'],['waiting','Waiting on parts'],['resolved','Resolved']],v=>d.status=v)))
+    grid.appendChild(modField('Contractor',modInput(d.contractor,v=>d.contractor=v,'Company / sole trader')))
+    grid.appendChild(modField('Cost (£)',modInput(d.cost,v=>d.cost=v,'','number')))
+    grid.appendChild(modField('Reported by',modInput(d.reported_by,v=>d.reported_by=v,'Your name')))
+    grid.appendChild(modField('Due date / next due',modInput(d.due_date,v=>d.due_date=v,'','date')))
+    if(d.status==='resolved') grid.appendChild(modField('Resolved date',modInput(d.resolved_date,v=>d.resolved_date=v,'','date')))
+    grid.appendChild(modField('Description',modTextarea(d.description,v=>d.description=v,'What is wrong / what needs doing'),true))
+    const photoField=el('div','mod-field full')
+    const pl=el('div','mod-field-lbl');pl.textContent='Photo (optional)'
+    const pi=el('input','mod-input');pi.type='file';pi.accept='image/*'
+    pi.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const url=await modUploadPhoto(f,'power-test-photos');d.photo_url=url;render()}catch(err){alert(err.message)}}
+    photoField.appendChild(pl);photoField.appendChild(pi)
+    if(d.photo_url){const im=document.createElement('img');im.src=d.photo_url;im.style.cssText='max-width:160px;margin-top:8px';photoField.appendChild(im)}
+    grid.appendChild(photoField)
+    form.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent=M.saving?'Saving…':(M.editId?'Save':'Add Job');save.disabled=M.saving
+    save.onclick=async()=>{
+      if(!d.title.trim()){alert('Title required');return}
+      M.saving=true;render()
+      try{
+        const payload={title:d.title.trim(),category:d.category,priority:d.priority,description:d.description||null,contractor:d.contractor||null,cost:d.cost?parseFloat(d.cost):null,status:d.status,due_date:d.due_date||null,resolved_date:d.resolved_date||null,reported_by:d.reported_by||null,photo_url:d.photo_url||null}
+        if(M.editId){const{error}=await db.from('maintenance').update(payload).eq('id',M.editId);if(error)throw error}
+        else{const{error}=await db.from('maintenance').insert(payload);if(error)throw error}
+        M.editId=null;M.draft=null;M.tab='open';M.loaded=false;loadMaint()
+      }catch(e){alert(e.message)}
+      M.saving=false;render()
+    }
+    const cancel=el('button','mod-btn mod-btn-out');cancel.textContent='Cancel';cancel.onclick=()=>{M.editId=null;M.draft=null;M.tab='open';render()}
+    acts.appendChild(save);acts.appendChild(cancel);form.appendChild(acts);body.appendChild(form)
+  }else{
+    if(M.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    let items=M.items
+    if(M.tab==='open') items=items.filter(i=>i.status!=='resolved')
+    if(!items.length){body.innerHTML='<div class="mod-empty">No items</div>';app.appendChild(body);return}
+    items.forEach(it=>{
+      const overd=it.due_date&&daysUntil(it.due_date)<0&&it.status!=='resolved'
+      const cls=it.status==='resolved'?'ok':(it.priority==='urgent'||overd?'high':it.priority==='high'?'warn':'')
+      const card=el('div','mod-card '+cls)
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${it.title}</div><div class="mod-card-sub">${it.category} · ${it.priority||'medium'} · ${it.status}</div></div><span class="mod-pill ${it.status==='resolved'?'green':overd?'red':it.priority==='high'||it.priority==='urgent'?'red':'amber'}">${it.due_date?(overd?'OVERDUE ':'')+fmtDate(it.due_date):it.status}</span></div>
+        ${it.description?`<div class="mod-card-body">${it.description}</div>`:''}
+        <div class="mod-card-meta">${it.contractor?`<span class="mod-pill">${it.contractor}</span>`:''}${it.cost?`<span class="mod-pill">£${parseFloat(it.cost).toFixed(2)}</span>`:''}${it.reported_by?`<span class="mod-pill">By ${it.reported_by}</span>`:''}</div>
+        ${it.photo_url?`<div style="margin-top:8px"><a href="${it.photo_url}" target="_blank"><img src="${it.photo_url}" style="max-width:140px"></a></div>`:''}`
+      card.onclick=()=>{M.editId=it.id;M.draft={...it,cost:it.cost||'',due_date:it.due_date||'',resolved_date:it.resolved_date||''};M.tab='new';render()}
+      body.appendChild(card)
+    })
+  }
+  app.appendChild(body)
+}
+
+// 7. CASH-UP
+async function loadCash(){
+  G.cash.loading=true;render()
+  try{
+    const{data}=await db.from('cash_up').select('*').order('shift_date',{ascending:false}).limit(200)
+    G.cash.items=data||[];G.cash.loaded=true
+  }catch(e){console.error(e);G.cash.items=[]}
+  G.cash.loading=false;render()
+}
+function renderCashUp(app){
+  const C=G.cash
+  if(!C.loaded&&!C.loading) loadCash()
+  const last7=C.items.filter(i=>{const d=daysUntil(i.shift_date);return d!==null&&d>-7})
+  const totalLast7=last7.reduce((s,i)=>s+(parseFloat(i.cash_total)||0)+(parseFloat(i.card_total)||0),0)
+  const variances=last7.filter(i=>Math.abs(parseFloat(i.variance)||0)>0.5).length
+  app.appendChild(modHero('<span class="r">CASH-UP</span>','Daily reconciliation · cash · card · variances',[
+    {value:'£'+totalLast7.toFixed(0),label:'Last 7 Days'},
+    {value:variances,label:'Variances',color:variances?'#ff9800':'#4caf50'},
+    {value:C.items.length,label:'Records'},
+  ]))
+  app.appendChild(modTabs([{id:'new',label:'New Cash-Up'},{id:'history',label:'History'}],C.tab,t=>{C.tab=t;render()}))
+  const body=el('div','mod-body')
+  if(C.tab==='new'){
+    const d=C.draft
+    const form=el('div','mod-form');const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Date',modInput(d.shift_date,v=>d.shift_date=v,'','date')))
+    grid.appendChild(modField('Shift',modSelect(d.shift,[['opening','Opening'],['closing','Closing'],['split','Split / day total']],v=>d.shift=v)))
+    grid.appendChild(modField('Cash total (£)',modInput(d.cash_total,v=>d.cash_total=v,'0.00','number')))
+    grid.appendChild(modField('Card total (£)',modInput(d.card_total,v=>d.card_total=v,'0.00','number')))
+    grid.appendChild(modField('Voids total (£)',modInput(d.void_total,v=>d.void_total=v,'0.00','number')))
+    grid.appendChild(modField('Float start (£)',modInput(d.float_start,v=>d.float_start=v,'','number')))
+    grid.appendChild(modField('Float end (£)',modInput(d.float_end,v=>d.float_end=v,'','number')))
+    grid.appendChild(modField('Variance (£)',modInput(d.variance,v=>d.variance=v,'+/− amount','number')))
+    grid.appendChild(modField('Void reasons',modTextarea(d.void_reasons,v=>d.void_reasons=v,'List voided items + reasons'),true))
+    grid.appendChild(modField('Notes',modTextarea(d.notes,v=>d.notes=v,'Tips taken, deposits, anything unusual'),true))
+    grid.appendChild(modField('Manager sign-off',modInput(d.signed_by,v=>d.signed_by=v,'Manager name')))
+    form.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent=C.saving?'Saving…':'Save Cash-Up';save.disabled=C.saving
+    save.onclick=async()=>{
+      if(!d.signed_by.trim()){alert('Manager sign-off required');return}
+      C.saving=true;render()
+      try{
+        const payload={shift_date:d.shift_date,shift:d.shift,cash_total:d.cash_total?parseFloat(d.cash_total):null,card_total:d.card_total?parseFloat(d.card_total):null,void_total:d.void_total?parseFloat(d.void_total):null,float_start:d.float_start?parseFloat(d.float_start):null,float_end:d.float_end?parseFloat(d.float_end):null,variance:d.variance?parseFloat(d.variance):null,void_reasons:d.void_reasons||null,notes:d.notes||null,signed_by:d.signed_by}
+        const{error}=await db.from('cash_up').insert(payload);if(error)throw error
+        C.draft={shift_date:todayStr(),shift:'closing',cash_total:'',card_total:'',void_total:'',void_reasons:'',float_start:'',float_end:'',variance:'',notes:'',signed_by:''}
+        C.loaded=false;loadCash()
+      }catch(e){alert(e.message)}
+      C.saving=false;render()
+    }
+    acts.appendChild(save);form.appendChild(acts);body.appendChild(form)
+  }else{
+    if(C.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    if(!C.items.length){body.innerHTML='<div class="mod-empty">No cash-ups yet</div>';app.appendChild(body);return}
+    C.items.forEach(it=>{
+      const variance=parseFloat(it.variance)||0
+      const total=(parseFloat(it.cash_total)||0)+(parseFloat(it.card_total)||0)
+      const cls=Math.abs(variance)>1?'high':Math.abs(variance)>0.5?'warn':'ok'
+      const card=el('div','mod-card '+cls)
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${fmtDate(it.shift_date)} · ${it.shift}</div><div class="mod-card-sub">Signed by ${it.signed_by||'?'}</div></div><span class="mod-pill">£${total.toFixed(2)}</span></div>
+        <div class="mod-card-meta"><span class="mod-pill">Cash £${(parseFloat(it.cash_total)||0).toFixed(2)}</span><span class="mod-pill">Card £${(parseFloat(it.card_total)||0).toFixed(2)}</span>${it.void_total?`<span class="mod-pill amber">Voids £${parseFloat(it.void_total).toFixed(2)}</span>`:''}<span class="mod-pill ${Math.abs(variance)>0.5?'red':'green'}">Var ${variance>=0?'+':''}£${variance.toFixed(2)}</span></div>
+        ${it.notes?`<div class="mod-card-body">${it.notes}</div>`:''}`
+      body.appendChild(card)
+    })
+  }
+  app.appendChild(body)
+}
+
+// 8. VISITOR LOG
+async function loadVisitors(){
+  G.visitor.loading=true;render()
+  try{
+    const{data}=await db.from('visitors').select('*').order('signed_in_at',{ascending:false}).limit(200)
+    G.visitor.items=data||[];G.visitor.loaded=true
+  }catch(e){console.error(e);G.visitor.items=[]}
+  G.visitor.loading=false;render()
+}
+function renderVisitorLog(app){
+  const V=G.visitor
+  if(!V.loaded&&!V.loading) loadVisitors()
+  const today=todayStr()
+  const todayItems=V.items.filter(i=>i.signed_in_at&&i.signed_in_at.startsWith(today))
+  const onSite=V.items.filter(i=>!i.signed_out_at).length
+  app.appendChild(modHero('<span class="r">VISITOR</span> LOG','Contractors · officials · non-staff entry',[
+    {value:onSite,label:'On Site Now',color:onSite?'#ff9800':'#888'},
+    {value:todayItems.length,label:'Today'},
+    {value:V.items.length,label:'All Time'},
+  ]))
+  app.appendChild(modTabs([{id:'today',label:'Sign In'},{id:'history',label:'History'}],V.tab,t=>{V.tab=t;render()}))
+  const body=el('div','mod-body')
+  if(V.tab==='today'){
+    const d=V.draft
+    const form=el('div','mod-form');const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Visitor name',modInput(d.visitor_name,v=>d.visitor_name=v,'Full name')))
+    grid.appendChild(modField('Company',modInput(d.company,v=>d.company=v,'Company name')))
+    grid.appendChild(modField('Purpose',modSelect(d.purpose,[['contractor','Contractor'],['delivery','Delivery driver'],['eho','EHO inspection'],['fire','Fire officer'],['licensing','Licensing'],['hmrc','HMRC'],['supplier','Supplier rep'],['interview','Interview / trial shift'],['other','Other']],v=>d.purpose=v)))
+    grid.appendChild(modField('Contact number',modInput(d.contact_number,v=>d.contact_number=v,'')))
+    grid.appendChild(modField('Signed in by (staff)',modInput(d.signed_in_by,v=>d.signed_in_by=v,'Your name')))
+    form.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent=V.saving?'Saving…':'Sign In Visitor';save.disabled=V.saving
+    save.onclick=async()=>{
+      if(!d.visitor_name.trim()||!d.signed_in_by.trim()){alert('Visitor name and Signed in by required');return}
+      V.saving=true;render()
+      try{
+        const payload={visitor_name:d.visitor_name.trim(),company:d.company||null,purpose:d.purpose,contact_number:d.contact_number||null,signed_in_by:d.signed_in_by,signed_in_at:new Date().toISOString()}
+        const{error}=await db.from('visitors').insert(payload);if(error)throw error
+        V.draft={visitor_name:'',company:'',purpose:'contractor',signed_in_by:d.signed_in_by,contact_number:'',signed_in_at:new Date().toISOString(),signed_out_at:''}
+        V.loaded=false;loadVisitors()
+      }catch(e){alert(e.message)}
+      V.saving=false;render()
+    }
+    acts.appendChild(save);form.appendChild(acts);body.appendChild(form)
+    if(onSite){
+      const sh=el('div','mod-section-hdr');sh.textContent='Currently On Site';body.appendChild(sh)
+      V.items.filter(i=>!i.signed_out_at).forEach(it=>{
+        const card=el('div','mod-card warn')
+        const inTime=it.signed_in_at?new Date(it.signed_in_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''
+        card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${it.visitor_name}</div><div class="mod-card-sub">${it.company||'-'} · ${it.purpose||'-'} · in at ${inTime}</div></div></div>`
+        const acts2=el('div','mod-actions')
+        const out=el('button','mod-btn mod-btn-out');out.textContent='Sign Out'
+        out.onclick=async(e)=>{e.stopPropagation();try{await db.from('visitors').update({signed_out_at:new Date().toISOString()}).eq('id',it.id);V.loaded=false;loadVisitors()}catch(err){alert(err.message)}}
+        acts2.appendChild(out);card.appendChild(acts2);body.appendChild(card)
+      })
+    }
+  }else{
+    if(V.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    if(!V.items.length){body.innerHTML='<div class="mod-empty">No visitors yet</div>';app.appendChild(body);return}
+    V.items.forEach(it=>{
+      const inTime=it.signed_in_at?new Date(it.signed_in_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''
+      const outTime=it.signed_out_at?new Date(it.signed_out_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'still on site'
+      const card=el('div','mod-card '+(it.signed_out_at?'ok':'warn'))
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${it.visitor_name}</div><div class="mod-card-sub">${it.company||'-'} · ${it.purpose||'-'}</div></div></div>
+        <div class="mod-card-meta"><span class="mod-pill">In: ${inTime}</span><span class="mod-pill ${it.signed_out_at?'green':'amber'}">Out: ${outTime}</span>${it.contact_number?`<span class="mod-pill">${it.contact_number}</span>`:''}</div>
+        <div class="mod-card-body" style="font-size:0.7rem;color:#666">Signed in by ${it.signed_in_by||'?'}</div>`
+      body.appendChild(card)
+    })
+  }
+  app.appendChild(body)
+}
+
+// 9. SHIFT HANDOVER
+async function loadHandovers(){
+  G.handover.loading=true;render()
+  try{
+    const{data}=await db.from('handovers').select('*').order('handover_date',{ascending:false}).limit(100)
+    G.handover.items=data||[];G.handover.loaded=true
+  }catch(e){console.error(e);G.handover.items=[]}
+  G.handover.loading=false;render()
+}
+function renderHandover(app){
+  const H=G.handover
+  if(!H.loaded&&!H.loading) loadHandovers()
+  app.appendChild(modHero('<span class="r">SHIFT</span> HANDOVER','Opening to closing manager passover',[
+    {value:H.items.length,label:'Logged'},
+    {value:H.items.filter(i=>i.handover_date===todayStr()).length,label:'Today'},
+  ]))
+  app.appendChild(modTabs([{id:'today',label:'New Handover'},{id:'history',label:'Recent'}],H.tab,t=>{H.tab=t;render()}))
+  const body=el('div','mod-body')
+  if(H.tab==='today'){
+    const d=H.draft
+    if(H.saved){const b=el('div','mod-banner green');b.textContent='✓ Handover saved';body.appendChild(b)}
+    const form=el('div','mod-form');const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Date',modInput(d.handover_date,v=>d.handover_date=v,'','date')))
+    grid.appendChild(modField('From shift',modSelect(d.from_shift,[['opening','Opening → Closing'],['closing','Closing → Next day opening'],['day','Day → Evening']],v=>d.from_shift=v)))
+    grid.appendChild(modField('From manager',modInput(d.from_name,v=>d.from_name=v,'Your name')))
+    grid.appendChild(modField('Issues to be aware of',modTextarea(d.issues,v=>d.issues=v,'Equipment faults, staff issues, customer issues'),true))
+    grid.appendChild(modField('VIPs / regulars',modTextarea(d.vips,v=>d.vips=v,'Names, what they ordered, expectations'),true))
+    grid.appendChild(modField('Deliveries pending',modTextarea(d.deliveries_pending,v=>d.deliveries_pending=v,'What is due in and when'),true))
+    grid.appendChild(modField('Follow-ups for next shift',modTextarea(d.followups,v=>d.followups=v,'Things to chase / check / order'),true))
+    grid.appendChild(modField('Sales notes',modTextarea(d.sales_target_notes,v=>d.sales_target_notes=v,'Target progress, big bookings, slow lines'),true))
+    form.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent=H.saving?'Saving…':'Save Handover';save.disabled=H.saving
+    save.onclick=async()=>{
+      if(!d.from_name.trim()){alert('Your name required');return}
+      H.saving=true;render()
+      try{
+        const payload={handover_date:d.handover_date,from_shift:d.from_shift,from_name:d.from_name,issues:d.issues||null,vips:d.vips||null,deliveries_pending:d.deliveries_pending||null,followups:d.followups||null,sales_target_notes:d.sales_target_notes||null}
+        const{error}=await db.from('handovers').insert(payload);if(error)throw error
+        H.saved=true
+        H.draft={handover_date:todayStr(),from_shift:'opening',from_name:'',issues:'',vips:'',deliveries_pending:'',followups:'',sales_target_notes:''}
+        H.loaded=false;loadHandovers()
+      }catch(e){alert(e.message)}
+      H.saving=false;render()
+    }
+    acts.appendChild(save);form.appendChild(acts);body.appendChild(form)
+  }else{
+    if(H.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    if(!H.items.length){body.innerHTML='<div class="mod-empty">No handovers yet</div>';app.appendChild(body);return}
+    H.items.forEach(it=>{
+      const card=el('div','mod-card ok')
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${fmtDate(it.handover_date)} · ${it.from_shift}</div><div class="mod-card-sub">From ${it.from_name||'?'}</div></div></div>
+        ${it.issues?`<div class="mod-card-body"><strong style="color:#c8102e">Issues:</strong> ${it.issues}</div>`:''}
+        ${it.vips?`<div class="mod-card-body"><strong style="color:#888">VIPs:</strong> ${it.vips}</div>`:''}
+        ${it.deliveries_pending?`<div class="mod-card-body"><strong style="color:#888">Deliveries:</strong> ${it.deliveries_pending}</div>`:''}
+        ${it.followups?`<div class="mod-card-body"><strong style="color:#ff9800">Follow up:</strong> ${it.followups}</div>`:''}
+        ${it.sales_target_notes?`<div class="mod-card-body"><strong style="color:#888">Sales:</strong> ${it.sales_target_notes}</div>`:''}`
+      body.appendChild(card)
+    })
+  }
+  app.appendChild(body)
+}
+
+// 10. SUPPLIERS
+async function loadSuppliers(){
+  G.suppliers.loading=true;render()
+  try{
+    const{data}=await db.from('suppliers').select('*').order('name',{ascending:true})
+    G.suppliers.items=data||[];G.suppliers.loaded=true
+  }catch(e){console.error(e);G.suppliers.items=[]}
+  G.suppliers.loading=false;render()
+}
+function renderSuppliers(app){
+  const S=G.suppliers
+  if(!S.loaded&&!S.loading) loadSuppliers()
+  app.appendChild(modHero('<span class="r">SUPPLIER</span> DIRECTORY','All contacts in one place',[
+    {value:S.items.length,label:'Suppliers'},
+  ]))
+  app.appendChild(modTabs([{id:'list',label:'Directory'},{id:'add',label:S.editId?'Edit':'Add Supplier'}],S.tab,t=>{S.tab=t;if(t==='add'&&!S.editId)S.draft={name:'',category:'food',contact_name:'',phone:'',email:'',account_number:'',payment_terms:'',delivery_days:'',notes:''};render()}))
+  const body=el('div','mod-body')
+  if(S.tab==='list'){
+    if(S.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
+    body.appendChild(modField('Search suppliers',modInput(S.search,v=>{S.search=v;render()},'Search…')))
+    let items=S.items
+    if(S.search) items=items.filter(s=>(s.name||'').toLowerCase().includes(S.search.toLowerCase())||(s.contact_name||'').toLowerCase().includes(S.search.toLowerCase()))
+    if(!items.length){const e=el('div','mod-empty');e.textContent='No suppliers';body.appendChild(e);app.appendChild(body);return}
+    items.forEach(it=>{
+      const card=el('div','mod-card ok')
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${it.name}</div><div class="mod-card-sub">${it.category||'-'}${it.contact_name?' · '+it.contact_name:''}</div></div></div>
+        <div class="mod-card-meta">${it.phone?`<span class="mod-pill">📞 ${it.phone}</span>`:''}${it.email?`<span class="mod-pill">✉ ${it.email}</span>`:''}${it.account_number?`<span class="mod-pill">A/C ${it.account_number}</span>`:''}${it.delivery_days?`<span class="mod-pill">${it.delivery_days}</span>`:''}${it.payment_terms?`<span class="mod-pill">${it.payment_terms}</span>`:''}</div>
+        ${it.notes?`<div class="mod-card-body" style="color:#666">${it.notes}</div>`:''}`
+      card.onclick=()=>{S.editId=it.id;S.draft={...it};S.tab='add';render()}
+      body.appendChild(card)
+    })
+  }else{
+    const d=S.draft
+    const form=el('div','mod-form');const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Supplier name',modInput(d.name,v=>d.name=v,'Company name')))
+    grid.appendChild(modField('Category',modSelect(d.category,[['food','Food'],['drink','Drink / wet'],['cleaning','Cleaning / chemicals'],['packaging','Packaging'],['utilities','Utilities'],['maintenance','Maintenance / contractor'],['other','Other']],v=>d.category=v)))
+    grid.appendChild(modField('Contact name',modInput(d.contact_name,v=>d.contact_name=v,'')))
+    grid.appendChild(modField('Phone',modInput(d.phone,v=>d.phone=v,'')))
+    grid.appendChild(modField('Email',modInput(d.email,v=>d.email=v,'','email')))
+    grid.appendChild(modField('Account number',modInput(d.account_number,v=>d.account_number=v,'')))
+    grid.appendChild(modField('Payment terms',modInput(d.payment_terms,v=>d.payment_terms=v,'e.g. 30 days')))
+    grid.appendChild(modField('Delivery days',modInput(d.delivery_days,v=>d.delivery_days=v,'e.g. Mon, Wed, Fri')))
+    grid.appendChild(modField('Notes',modTextarea(d.notes,v=>d.notes=v,''),true))
+    form.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent=S.saving?'Saving…':(S.editId?'Save':'Add Supplier');save.disabled=S.saving
+    save.onclick=async()=>{
+      if(!d.name.trim()){alert('Name required');return}
+      S.saving=true;render()
+      try{
+        const payload={name:d.name.trim(),category:d.category,contact_name:d.contact_name||null,phone:d.phone||null,email:d.email||null,account_number:d.account_number||null,payment_terms:d.payment_terms||null,delivery_days:d.delivery_days||null,notes:d.notes||null}
+        if(S.editId){const{error}=await db.from('suppliers').update(payload).eq('id',S.editId);if(error)throw error}
+        else{const{error}=await db.from('suppliers').insert(payload);if(error)throw error}
+        S.editId=null;S.draft=null;S.tab='list';S.loaded=false;loadSuppliers()
+      }catch(e){alert(e.message)}
+      S.saving=false;render()
+    }
+    const cancel=el('button','mod-btn mod-btn-out');cancel.textContent='Cancel';cancel.onclick=()=>{S.editId=null;S.draft=null;S.tab='list';render()}
+    acts.appendChild(save);acts.appendChild(cancel)
+    if(S.editId){
+      const del=el('button','mod-btn mod-btn-out');del.textContent='Delete';del.style.color='#c8102e';del.style.borderColor='#c8102e'
+      del.onclick=async()=>{if(!confirm('Delete supplier?'))return;try{await db.from('suppliers').delete().eq('id',S.editId);S.editId=null;S.draft=null;S.tab='list';S.loaded=false;loadSuppliers()}catch(e){alert(e.message)}}
+      acts.appendChild(del)
+    }
+    form.appendChild(acts);body.appendChild(form)
+  }
+  app.appendChild(body)
 }
 
 init()
