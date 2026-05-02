@@ -1144,30 +1144,67 @@ function renderTemps(app){
     const trow=el('div','temp-row')
     const tw=el('div','temp-wrap')
     const tinp=el('input','temp-inp'+(s!=='empty'?' '+s:''))
-    tinp.type='number';tinp.step='0.1';tinp.placeholder='0.0'
-    tinp.value=val!==undefined?val:'';if(isLogged)tinp.disabled=true
+    // Use type="text" so partial values like "-" survive while typing
+    // pattern allows the iOS numeric keypad with minus to be summoned
+    tinp.type='text'
+    tinp.inputMode=unit.type==='freezer'?'text':'decimal'
+    tinp.autocomplete='off'
+    tinp.placeholder=unit.type==='freezer'?'-18.0':'0.0'
+    tinp.value=val!==undefined?val:''
+    if(isLogged)tinp.disabled=true
     tinp.oninput=e=>{
-      T.readings[unit.id]=e.target.value
-      // Only re-render for status colour update if we have a valid number
-      const n=parseFloat(e.target.value)
-      if(!isNaN(n)) render()
+      // Allow only digits, one optional leading minus, optional decimal point
+      let v=e.target.value.replace(/[^0-9.\-]/g,'')
+      // Only one minus, only at start
+      if(v.indexOf('-')>0) v=v.replace(/-/g,'')
+      // Only one decimal
+      const firstDot=v.indexOf('.')
+      if(firstDot>=0) v=v.slice(0,firstDot+1)+v.slice(firstDot+1).replace(/\./g,'')
+      e.target.value=v
+      T.readings[unit.id]=v
+      // Update status colour without re-rendering (keeps focus + caret position)
+      const n=parseFloat(v)
+      tinp.classList.remove('ok','warn','danger')
+      if(!isNaN(n)){
+        const ns=getTempStatus(unit,v)
+        if(ns&&ns!=='empty') tinp.classList.add(ns)
+      }
     }
     const tu=el('span','temp-unit');tu.textContent='°C'
-    // Quick negative toggle for freezers (mobile keyboards often hide minus)
+    // Quick negative toggle for freezers (essential — many phone keypads hide minus)
     const quickRow=el('div','temp-quick-row')
     if(unit.type==='freezer'){
       const negBtn=el('button','temp-quick-btn')
-      negBtn.type='button';negBtn.textContent='+/−'
+      negBtn.type='button'
+      negBtn.textContent='+/−'
       negBtn.title='Toggle negative'
-      negBtn.onclick=()=>{
-        const cur=String(T.readings[unit.id]||'')
-        if(cur===''||cur==='-'){T.readings[unit.id]='-';tinp.value='-';tinp.focus();return}
-        if(cur.startsWith('-')) T.readings[unit.id]=cur.slice(1)
-        else T.readings[unit.id]='-'+cur
-        tinp.value=T.readings[unit.id]
-        render()
+      negBtn.onclick=(e)=>{
+        e.preventDefault();e.stopPropagation()
+        let cur=String(tinp.value||'')
+        if(cur==='-'){cur='';T.readings[unit.id]=''}
+        else if(cur.startsWith('-')){cur=cur.slice(1)}
+        else{cur='-'+cur}
+        tinp.value=cur
+        T.readings[unit.id]=cur
+        // Trigger oninput to update colour
+        tinp.dispatchEvent(new Event('input'))
+        tinp.focus()
       }
       quickRow.appendChild(negBtn)
+      // Also a one-tap "−18" shortcut for the most common freezer reading
+      const presetBtn=el('button','temp-quick-btn')
+      presetBtn.type='button'
+      presetBtn.textContent='−18'
+      presetBtn.style.color='#888'
+      presetBtn.title='Set to -18'
+      presetBtn.onclick=(e)=>{
+        e.preventDefault();e.stopPropagation()
+        tinp.value='-18'
+        T.readings[unit.id]='-18'
+        tinp.dispatchEvent(new Event('input'))
+        tinp.focus()
+      }
+      quickRow.appendChild(presetBtn)
     }
     tw.appendChild(tinp);tw.appendChild(tu);if(unit.type==='freezer')tw.appendChild(quickRow)
 
@@ -1177,7 +1214,8 @@ function renderTemps(app){
     chip.textContent=s==='ok'?'✓ OK':s==='warn'?'⚠ CHECK':s==='danger'?'✕ ACTION':'—'
     trow.appendChild(tw);trow.appendChild(chip)
     ubody.appendChild(trow)
-    ubody.innerHTML+=`<div class="unit-limit" style="margin-bottom:6px">${unit.note}</div>`
+    const noteDiv=el('div','unit-limit');noteDiv.style.marginBottom='6px';noteDiv.textContent=unit.note
+    ubody.appendChild(noteDiv)
 
     if((s==='warn'||s==='danger')&&!isLogged){
       const al=el('span','action-lbl');al.textContent='⚠ Corrective Action Required'
