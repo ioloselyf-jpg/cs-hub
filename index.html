@@ -4426,7 +4426,7 @@ async function pnlLoadPeriods(){
 }
 async function pnlLoadPeriodData(){
   const P=G.pnl
-  if(!P.currentId){P.revenue=[];P.unrecipe=[];P.summary=null;P.costEntries=[];render();return}
+  if(!P.currentId){P.revenue=[];P.unrecipe=[];P.summary=null;P.costEntries=[];P.wageCount=0;render();return}
   const{data:rev}=await db.from('revenue_rollup').select('*').eq('period_id',P.currentId)
   P.revenue=rev||[]
   const{data:unr}=await db.from('unrecipe_items').select('*')
@@ -4435,6 +4435,8 @@ async function pnlLoadPeriodData(){
   P.summary=sum||null
   const{data:costs}=await db.from('cost_entries').select('*,cost_categories(name)').eq('period_id',P.currentId).order('created_at',{ascending:false})
   P.costEntries=costs||[]
+  const{count:wc}=await db.from('wage_import').select('id',{count:'exact',head:true}).eq('period_id',P.currentId)
+  P.wageCount=wc||0
   render()
 }
 async function pnlLoadAll(){
@@ -4462,6 +4464,15 @@ async function pnlToggleLock(){
   const P=G.pnl;if(!P.current)return
   const next=P.current.status==='draft'?'locked':'draft'
   await db.from('pnl_periods').update({status:next}).eq('id',P.current.id)
+  await pnlLoadPeriods();await pnlLoadPeriodData()
+}
+async function pnlDeletePeriod(){
+  const P=G.pnl;if(!P.current)return
+  const label=P.current.week_label
+  if(!confirm(`Delete ${label} permanently? This removes all sales, wage and cost data for this week — recipes and ingredient costs are unaffected. This cannot be undone.`))return
+  const{error}=await db.from('pnl_periods').delete().eq('id',P.current.id)
+  if(error){alert('Could not delete: '+error.message);return}
+  P.currentId=null
   await pnlLoadPeriods();await pnlLoadPeriodData()
 }
 
@@ -4571,10 +4582,40 @@ function renderPnL(app){
   const btnRow=el('div');btnRow.style.display='flex';btnRow.style.gap='8px';btnRow.style.alignItems='center'
   const newBtn=el('button','mod-btn-out');newBtn.textContent='+ New Week';newBtn.style.padding='9px 14px';newBtn.onclick=pnlNewPeriod
   const lockBtn=el('button','mod-btn-out');lockBtn.textContent=P.current&&P.current.status==='locked'?'Reopen Week':'Lock Week';lockBtn.style.padding='9px 14px';lockBtn.onclick=pnlToggleLock
+  const delBtn=el('button','mod-btn-out');delBtn.textContent='Delete Week';delBtn.style.padding='9px 14px';delBtn.style.borderColor='#fb0000';delBtn.style.color='#fb0000';delBtn.onclick=pnlDeletePeriod
   const pill=el('span','status-pill '+(P.current&&P.current.status==='locked'?'green':'amber'));pill.textContent=P.current?P.current.status:'no week'
-  btnRow.appendChild(pill);btnRow.appendChild(newBtn);btnRow.appendChild(lockBtn)
+  btnRow.appendChild(pill);btnRow.appendChild(newBtn);btnRow.appendChild(lockBtn);btnRow.appendChild(delBtn)
   pbar.appendChild(sel);pbar.appendChild(btnRow)
   app.appendChild(pbar)
+
+  // ---- weekly checklist: always-visible "where am I" ----
+  if(P.currentId){
+    const nonFixedCosts=P.costEntries.filter(c=>c.note!=='(fixed, auto-carried)').length
+    const steps=[
+      {done:P.revenue.length>0,label:'Import sales',sub:P.revenue.length?`${P.revenue.length} categories in`:'Items Summary CSV not imported yet',tab:'import'},
+      {done:P.wageCount>0,label:'Import wages',sub:P.wageCount?`${P.wageCount} staff in`:'Staff Report CSV not imported yet',tab:'import'},
+      {done:nonFixedCosts>0,label:'Add any extra costs',sub:nonFixedCosts?`${nonFixedCosts} added (plus fixed costs)`:'Optional — fixed costs already carried in',tab:'costs'},
+      {done:P.current&&P.current.status==='locked',label:'Lock the week',sub:P.current&&P.current.status==='locked'?'Locked — numbers are final':'Do this last, once everything above is in',tab:null},
+    ]
+    const checklist=el('div','mod-card')
+    checklist.style.padding='16px 18px'
+    const title=el('div','mod-section-hdr');title.style.marginTop='0';title.textContent=`This week — ${P.current?P.current.week_label:''}`
+    checklist.appendChild(title)
+    steps.forEach(st=>{
+      const row=el('div')
+      row.style.display='flex';row.style.alignItems='center';row.style.gap='12px';row.style.padding='8px 0';row.style.borderBottom='1px solid #111'
+      if(st.tab)row.style.cursor='pointer'
+      const dot=el('span');dot.textContent=st.done?'✓':'○'
+      dot.style.fontSize='1.1rem';dot.style.width='22px';dot.style.textAlign='center'
+      dot.style.color=st.done?'#4caf50':'#555'
+      const txt=el('div')
+      txt.innerHTML=`<div style="font-weight:800;font-size:0.85rem;color:${st.done?'#fff':'#bbb'}">${st.label}</div><div style="font-size:0.72rem;color:#666">${st.sub}</div>`
+      row.appendChild(dot);row.appendChild(txt)
+      if(st.tab)row.onclick=()=>{P.tab=st.tab;render()}
+      checklist.appendChild(row)
+    })
+    app.appendChild(checklist)
+  }
 
   app.appendChild(modTabs([{id:'dashboard',label:'Dashboard'},{id:'import',label:'Import'},{id:'costs',label:'Costs'},{id:'recipes',label:'Recipes'}],P.tab,t=>{P.tab=t;render()}))
   const body=el('div','mod-body')
