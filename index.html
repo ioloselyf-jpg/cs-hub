@@ -679,7 +679,7 @@ let G={
   // Pest Log
   pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:new Date().toISOString().split('T')[0],reporter:'',severity:'medium',notes:'',action:''},filter:'all'},
   // P&L
-  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},preview:{items:null,wages:null,ingredients:null}},
+  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},preview:{items:null,wages:null,ingredients:null}},
 }
 
 // ============================================================
@@ -4447,17 +4447,18 @@ async function pnlLoadAll(){
   P.loading=false;P.loaded=true;render()
 }
 
-async function pnlNewPeriod(){
-  const monday=pnlMonday(new Date())
+async function pnlCreatePeriod(dateStr){
+  const monday=pnlMonday(dateStr?new Date(dateStr+'T12:00:00'):new Date())
   const sunday=new Date(monday);sunday.setDate(sunday.getDate()+6)
   const label=pnlIsoWeek(monday)
   const{data,error}=await db.from('pnl_periods').insert({week_label:label,start_date:monday.toISOString().slice(0,10),end_date:sunday.toISOString().slice(0,10),status:'draft'}).select().single()
-  if(error){alert('Could not create week: '+error.message);return}
+  if(error){alert(error.message.includes('duplicate')?`A week already exists covering ${monday.toLocaleDateString('en-GB')}–${sunday.toLocaleDateString('en-GB')}. Select it from the dropdown instead.`:'Could not create week: '+error.message);return}
   if(G.pnl.fixedCosts.length){
     const rows=G.pnl.fixedCosts.map(f=>({period_id:data.id,category_id:f.category_id,amount:f.weekly_amount,note:f.note||'(fixed, auto-carried)'}))
     await db.from('cost_entries').insert(rows)
   }
   G.pnl.currentId=data.id
+  G.pnl.showNewPeriodForm=false
   await pnlLoadPeriods();await pnlLoadPeriodData()
 }
 async function pnlToggleLock(){
@@ -4580,13 +4581,38 @@ function renderPnL(app){
   P.periods.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.week_label} — ${p.status}`;if(p.id===P.currentId)o.selected=true;sel.appendChild(o)})
   sel.onchange=e=>{P.currentId=e.target.value;pnlLoadPeriods().then(pnlLoadPeriodData)}
   const btnRow=el('div');btnRow.style.display='flex';btnRow.style.gap='8px';btnRow.style.alignItems='center'
-  const newBtn=el('button','mod-btn-out');newBtn.textContent='+ New Week';newBtn.style.padding='9px 14px';newBtn.onclick=pnlNewPeriod
+  const newBtn=el('button','mod-btn-out');newBtn.textContent='+ New Week';newBtn.style.padding='9px 14px'
+  newBtn.onclick=()=>{
+    if(!P.newPeriodDate){
+      const lastMon=pnlMonday(new Date());lastMon.setDate(lastMon.getDate()-7)
+      P.newPeriodDate=lastMon.toISOString().slice(0,10)
+    }
+    P.showNewPeriodForm=!P.showNewPeriodForm;render()
+  }
   const lockBtn=el('button','mod-btn-out');lockBtn.textContent=P.current&&P.current.status==='locked'?'Reopen Week':'Lock Week';lockBtn.style.padding='9px 14px';lockBtn.onclick=pnlToggleLock
   const delBtn=el('button','mod-btn-out');delBtn.textContent='Delete Week';delBtn.style.padding='9px 14px';delBtn.style.borderColor='#fb0000';delBtn.style.color='#fb0000';delBtn.onclick=pnlDeletePeriod
   const pill=el('span','status-pill '+(P.current&&P.current.status==='locked'?'green':'amber'));pill.textContent=P.current?P.current.status:'no week'
   btnRow.appendChild(pill);btnRow.appendChild(newBtn);btnRow.appendChild(lockBtn);btnRow.appendChild(delBtn)
   pbar.appendChild(sel);pbar.appendChild(btnRow)
   app.appendChild(pbar)
+
+  if(P.showNewPeriodForm){
+    const nf=el('div','mod-card')
+    nf.style.padding='16px 18px'
+    const previewMon=pnlMonday(new Date(P.newPeriodDate+'T12:00:00'))
+    const previewSun=new Date(previewMon);previewSun.setDate(previewSun.getDate()+6)
+    const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Any day in the week you\'re creating',modInput(P.newPeriodDate,v=>{P.newPeriodDate=v;render()},'','date')))
+    const infoWrap=el('div');infoWrap.style.display='flex';infoWrap.style.flexDirection='column';infoWrap.style.justifyContent='center'
+    infoWrap.innerHTML=`<div style="font-size:0.72rem;color:#666;text-transform:uppercase;letter-spacing:1px">Will create</div><div style="font-weight:800">${pnlIsoWeek(previewMon)} — ${previewMon.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} to ${previewSun.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>`
+    grid.appendChild(infoWrap)
+    nf.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const create=el('button','mod-btn');create.textContent='Create Week';create.onclick=()=>pnlCreatePeriod(P.newPeriodDate)
+    const cancel=el('button','mod-btn-out');cancel.textContent='Cancel';cancel.onclick=()=>{P.showNewPeriodForm=false;render()}
+    acts.appendChild(create);acts.appendChild(cancel);nf.appendChild(acts)
+    app.appendChild(nf)
+  }
 
   // ---- weekly checklist: always-visible "where am I" ----
   if(P.currentId){
