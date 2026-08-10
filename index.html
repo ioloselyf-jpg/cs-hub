@@ -678,6 +678,8 @@ let G={
   suppliers:{tab:'list',items:[],loading:false,loaded:false,draft:{name:'',category:'food',contact_name:'',phone:'',email:'',account_number:'',payment_terms:'',delivery_days:'',notes:''},saving:false,editId:null,search:''},
   // Pest Log
   pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:new Date().toISOString().split('T')[0],reporter:'',severity:'medium',notes:'',action:''},filter:'all'},
+  // P&L
+  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},preview:{items:null,wages:null,ingredients:null}},
 }
 
 // ============================================================
@@ -695,24 +697,26 @@ function calcExpiry(date,yrs){if(!date||!yrs)return'';const d=new Date(date);d.s
 // ============================================================
 const DASH_CARDS=[
   {id:'compliance',icon:'🍟',name:'Compliance',desc:'UK compliance checklist with projected vs actual costs. 69 checks across food safety, HR, health & safety, and legal.',locked:true},
-  {id:'premises',icon:'🏠',name:'Premises Checks',desc:'Daily & weekly operational checks across kitchen, bar, floor, toilets, cellar and plant room.',locked:false},
-  {id:'temps',icon:'🌡️',name:'Temperature Log',desc:'Log fridge and freezer temps every service across kitchen and bar. 12 units tracked.',locked:false},
-  {id:'allergens',icon:'🥜',name:'Allergens & Recipes',desc:'Natasha\u2019s Law compliance. Menu items, ingredients and the 14 UK allergens with last-reviewed dates.',locked:false},
-  {id:'delivery',icon:'📦',name:'Delivery Log',desc:'Goods-in checks. Supplier, chilled temp, batch numbers, photo and signed off — HACCP traceability.',locked:false},
-  {id:'incident',icon:'🚨',name:'Incident Log',desc:'Accidents, near misses, complaints, refusals and RIDDOR-reportable events with witness sign-off.',locked:false},
-  {id:'cleaning',icon:'🧽',name:'Cleaning Schedule',desc:'Deep cleans and recurring tasks — frequency, last completed, who did it. Auto-generates the rota.',locked:false},
-  {id:'stock',icon:'📊',name:'Stock & Wastage',desc:'Wastage by category, breakage, spoilage and GP impact. Spot patterns and reduce shrinkage.',locked:false},
-  {id:'maint',icon:'🔧',name:'Maintenance',desc:'Broken kit, contractors, costs, fix dates. Tracks PAT, gas safe and other recurring certifications.',locked:false},
+  {id:'premises',icon:'🏠',name:'Premises Checks',desc:'Daily & weekly operational checks across kitchen, bar, floor, toilets, cellar and plant room.',locked:true},
+  {id:'temps',icon:'🌡️',name:'Temperature Log',desc:'Log fridge and freezer temps every service across kitchen and bar. 12 units tracked.',locked:true},
+  {id:'allergens',icon:'🥜',name:'Allergens & Recipes',desc:'Natasha\u2019s Law compliance. Menu items, ingredients and the 14 UK allergens with last-reviewed dates.',locked:true},
+  {id:'delivery',icon:'📦',name:'Delivery Log',desc:'Goods-in checks. Supplier, chilled temp, batch numbers, photo and signed off — HACCP traceability.',locked:true},
+  {id:'incident',icon:'🚨',name:'Incident Log',desc:'Accidents, near misses, complaints, refusals and RIDDOR-reportable events with witness sign-off.',locked:true},
+  {id:'cleaning',icon:'🧽',name:'Cleaning Schedule',desc:'Deep cleans and recurring tasks — frequency, last completed, who did it. Auto-generates the rota.',locked:true},
+  {id:'stock',icon:'📊',name:'Stock & Wastage',desc:'Wastage by category, breakage, spoilage and GP impact. Spot patterns and reduce shrinkage.',locked:true},
+  {id:'maint',icon:'🔧',name:'Maintenance',desc:'Broken kit, contractors, costs, fix dates. Tracks PAT, gas safe and other recurring certifications.',locked:true},
   {id:'cash',icon:'💷',name:'Cash-Up',desc:'Daily cash, card splits, voids, variances and manager sign-off. Flags shrinkage patterns.',locked:true},
-  {id:'visitor',icon:'📋',name:'Visitor Log',desc:'Contractors, EHO, fire officers and any non-staff entry. Required for some insurance policies.',locked:false},
-  {id:'handover',icon:'📝',name:'Shift Handover',desc:'Opening to closing manager passover — issues, VIPs, things to chase tomorrow.',locked:false},
-  {id:'suppliers',icon:'📇',name:'Suppliers',desc:'All supplier contacts in one place — rep, account number, payment terms, last delivery.',locked:false},
-  {id:'power',icon:'⚡',name:'Load Test',desc:'Meter spike test for fridges, freezers and 3 large heaters. Upload before/after meter photos and calculate kW.',locked:false},
+  {id:'visitor',icon:'📋',name:'Visitor Log',desc:'Contractors, EHO, fire officers and any non-staff entry. Required for some insurance policies.',locked:true},
+  {id:'handover',icon:'📝',name:'Shift Handover',desc:'Opening to closing manager passover — issues, VIPs, things to chase tomorrow.',locked:true},
+  {id:'suppliers',icon:'📇',name:'Suppliers',desc:'All supplier contacts in one place — rep, account number, payment terms, last delivery.',locked:true},
+  {id:'power',icon:'⚡',name:'Load Test',desc:'Meter spike test for fridges, freezers and 3 large heaters. Upload before/after meter photos and calculate kW.',locked:true},
   {id:'fire',icon:'🔥',name:'Fire Safety',desc:'Full PAS 79 fire risk assessment with evidence uploads and printable report.',locked:true},
-  {id:'training',icon:'👥',name:'Staff Training',desc:'Track staff certifications, expiry dates, and compliance across the whole team.',locked:false},
-  {id:'worldcup',icon:'⚽',name:'World Cup 2026',desc:'Full fixture schedule, England games, and pint loyalty card system.',locked:false},
+  {id:'training',icon:'👥',name:'Staff Training',desc:'Track staff certifications, expiry dates, and compliance across the whole team.',locked:true},
+  {id:'worldcup',icon:'⚽',name:'World Cup 2026',desc:'Full fixture schedule, England games, and pint loyalty card system.',locked:true},
   {id:'pest',icon:'🐭',name:'Pest Log',desc:'Log rodent and insect sightings by location and severity. Auto-alerts when EHO risk threshold is reached.',locked:true},
+  {id:'pnl',icon:'📈',name:'P&L',desc:'Weekly profit & loss — Blink imports for revenue and wages, automated COGS from recipes, manual entry for the rest.',locked:true},
 ]
+DASH_CARDS.forEach(c=>{if(!(c.id in G.unlocked))G.unlocked[c.id]=false})
 
 // ============================================================
 // PIN GATE
@@ -779,35 +783,28 @@ function render(){
   app.appendChild(hdr)
 
   if(G.screen==='dash') renderDash(app)
-  else if(G.screen==='compliance'){
-    if(!G.unlocked.compliance){renderPin('compliance',app)}
-    else renderCompliance(app)
-  }
-  else if(G.screen==='temps') renderTemps(app)
-  else if(G.screen==='allergens') renderAllergens(app)
-  else if(G.screen==='delivery') renderDeliveryLog(app)
-  else if(G.screen==='incident') renderIncidentLog(app)
-  else if(G.screen==='cleaning') renderCleaning(app)
-  else if(G.screen==='stock') renderStockLog(app)
-  else if(G.screen==='maint') renderMaintenance(app)
-  else if(G.screen==='cash'){
-    if(!G.unlocked.cash){renderPin('cash',app)}
-    else renderCashUp(app)
-  }
-  else if(G.screen==='visitor') renderVisitorLog(app)
-  else if(G.screen==='handover') renderHandover(app)
-  else if(G.screen==='suppliers') renderSuppliers(app)
-  else if(G.screen==='power') renderPowerTest(app)
-  else if(G.screen==='fire'){
-    if(!G.unlocked.fire){renderPin('fire',app)}
-    else renderFire(app)
-  }
-  else if(G.screen==='training') renderTraining(app)
-  else if(G.screen==='premises') renderPremises(app)
-  else if(G.screen==='worldcup') renderWorldCup(app)
-  else if(G.screen==='pest'){
-    if(!G.unlocked.pest){renderPin('pest',app)}
-    else renderPestLog(app)
+  else{
+    const _card=DASH_CARDS.find(c=>c.id===G.screen)
+    if(_card&&_card.locked&&!G.unlocked[G.screen]){renderPin(G.screen,app)}
+    else if(G.screen==='compliance') renderCompliance(app)
+    else if(G.screen==='temps') renderTemps(app)
+    else if(G.screen==='allergens') renderAllergens(app)
+    else if(G.screen==='delivery') renderDeliveryLog(app)
+    else if(G.screen==='incident') renderIncidentLog(app)
+    else if(G.screen==='cleaning') renderCleaning(app)
+    else if(G.screen==='stock') renderStockLog(app)
+    else if(G.screen==='maint') renderMaintenance(app)
+    else if(G.screen==='cash') renderCashUp(app)
+    else if(G.screen==='visitor') renderVisitorLog(app)
+    else if(G.screen==='handover') renderHandover(app)
+    else if(G.screen==='suppliers') renderSuppliers(app)
+    else if(G.screen==='power') renderPowerTest(app)
+    else if(G.screen==='fire') renderFire(app)
+    else if(G.screen==='training') renderTraining(app)
+    else if(G.screen==='premises') renderPremises(app)
+    else if(G.screen==='worldcup') renderWorldCup(app)
+    else if(G.screen==='pest') renderPestLog(app)
+    else if(G.screen==='pnl') renderPnL(app)
   }
 }
 
@@ -4378,6 +4375,347 @@ function renderPestLog(app){
     }
   }
   app.appendChild(wrap)
+}
+
+// ============================================================
+// 15. P&L
+// ============================================================
+function pnlUnquote(s){return String(s||'').replace(/^"|"$/g,'').trim()}
+function pnlNum(s){if(s===undefined||s===null)return 0;return parseFloat(String(s).replace(/[",£]/g,''))||0}
+function pnlMoney(n){return '£'+(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function pnlHhmm(s){const p=pnlUnquote(s).split(':');return (parseInt(p[0])||0)+(parseInt(p[1])||0)/60}
+function pnlReadFile(file){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader()
+    r.onload=e=>{
+      let text
+      try{text=new TextDecoder('utf-16le').decode(e.target.result)}catch(err){text=new TextDecoder('utf-8').decode(e.target.result)}
+      resolve(text.replace(/^\uFEFF/,''))
+    }
+    r.onerror=reject
+    r.readAsArrayBuffer(file)
+  })
+}
+function pnlParseTSV(text){return text.split(/\r?\n/).filter(l=>l.trim().length).map(l=>l.split('\t').map(pnlUnquote))}
+function pnlMonday(d){const x=new Date(d);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x}
+function pnlIsoWeek(d){
+  const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()))
+  const dn=(x.getUTCDay()+6)%7;x.setUTCDate(x.getUTCDate()-dn+3)
+  const t=new Date(Date.UTC(x.getUTCFullYear(),0,4))
+  const wk=1+Math.round(((x-t)/86400000-3+((t.getUTCDay()+6)%7))/7)
+  return `${x.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`
+}
+
+async function pnlLoadStatic(){
+  const P=G.pnl
+  const{data:cats}=await db.from('cost_categories').select('*').order('name')
+  P.costCats=cats||[]
+  const{data:ings}=await db.from('ingredient_costs').select('id,ingredient_name').order('ingredient_name')
+  P.ingredientOpts=ings||[]
+  const{data:fixed}=await db.from('fixed_costs').select('*,cost_categories(name)').eq('active',true)
+  P.fixedCosts=fixed||[]
+  const{data:recipes}=await db.from('recipe_ingredients').select('*,ingredient_costs(ingredient_name)').order('item_name')
+  P.recipeRows=recipes||[]
+}
+async function pnlLoadPeriods(){
+  const P=G.pnl
+  const{data}=await db.from('pnl_periods').select('*').order('start_date',{ascending:false})
+  P.periods=data||[]
+  if(P.periods.length&&!P.currentId){P.currentId=P.periods[0].id}
+  P.current=P.periods.find(p=>p.id===P.currentId)||null
+}
+async function pnlLoadPeriodData(){
+  const P=G.pnl
+  if(!P.currentId){P.revenue=[];P.unrecipe=[];P.summary=null;P.costEntries=[];render();return}
+  const{data:rev}=await db.from('revenue_rollup').select('*').eq('period_id',P.currentId)
+  P.revenue=rev||[]
+  const{data:unr}=await db.from('unrecipe_items').select('*')
+  P.unrecipe=unr||[]
+  const{data:sum}=await db.from('pnl_summary').select('*').eq('period_id',P.currentId).single()
+  P.summary=sum||null
+  const{data:costs}=await db.from('cost_entries').select('*,cost_categories(name)').eq('period_id',P.currentId).order('created_at',{ascending:false})
+  P.costEntries=costs||[]
+  render()
+}
+async function pnlLoadAll(){
+  const P=G.pnl
+  P.loading=true;render()
+  try{await pnlLoadStatic();await pnlLoadPeriods();await pnlLoadPeriodData()}
+  catch(e){console.error(e)}
+  P.loading=false;P.loaded=true;render()
+}
+
+async function pnlNewPeriod(){
+  const monday=pnlMonday(new Date())
+  const sunday=new Date(monday);sunday.setDate(sunday.getDate()+6)
+  const label=pnlIsoWeek(monday)
+  const{data,error}=await db.from('pnl_periods').insert({week_label:label,start_date:monday.toISOString().slice(0,10),end_date:sunday.toISOString().slice(0,10),status:'draft'}).select().single()
+  if(error){alert('Could not create week: '+error.message);return}
+  if(G.pnl.fixedCosts.length){
+    const rows=G.pnl.fixedCosts.map(f=>({period_id:data.id,category_id:f.category_id,amount:f.weekly_amount,note:f.note||'(fixed, auto-carried)'}))
+    await db.from('cost_entries').insert(rows)
+  }
+  G.pnl.currentId=data.id
+  await pnlLoadPeriods();await pnlLoadPeriodData()
+}
+async function pnlToggleLock(){
+  const P=G.pnl;if(!P.current)return
+  const next=P.current.status==='draft'?'locked':'draft'
+  await db.from('pnl_periods').update({status:next}).eq('id',P.current.id)
+  await pnlLoadPeriods();await pnlLoadPeriodData()
+}
+
+async function pnlImportItems(file){
+  const P=G.pnl
+  const text=await pnlReadFile(file)
+  const rows=pnlParseTSV(text);const header=rows[0];const body=rows.slice(1).filter(r=>r.length>=header.length&&r[0])
+  const records=body.map(r=>({period_id:P.currentId,item_name:r[0],quantity:pnlNum(r[1]),gross_sales:pnlNum(r[2]),discounts:pnlNum(r[3]),refunds:pnlNum(r[4]),net_item_sales:pnlNum(r[5]),tax:pnlNum(r[6]),net_sales:pnlNum(r[7]),category:r[9]||'Uncategorised',subcategory:r[10]||null,type:r[11]||'Beverage'}))
+  P.preview.items={records,total:records.reduce((s,r)=>s+r.net_sales,0)}
+  render()
+}
+async function pnlCommitItems(){
+  const P=G.pnl;const rec=P.preview.items.records
+  await db.from('item_sales_import').delete().eq('period_id',P.currentId)
+  const{error}=await db.from('item_sales_import').insert(rec)
+  if(error){alert('Import failed: '+error.message);return}
+  P.preview.items=null
+  await pnlLoadPeriodData()
+}
+async function pnlImportWages(file){
+  const P=G.pnl
+  const text=await pnlReadFile(file)
+  const rows=pnlParseTSV(text);const header=rows[0];const body=rows.slice(1).filter(r=>r.length>=header.length&&r[0])
+  const records=body.map(r=>({period_id:P.currentId,employee_name:r[0],rate:pnlNum(r[1]),hours_worked:Math.round(pnlHhmm(r[2])*100)/100,payment:pnlNum(r[3])}))
+  const flags=records.filter(r=>r.rate===0&&r.hours_worked>0)
+  P.preview.wages={records,total:records.reduce((s,r)=>s+r.payment,0),flags}
+  render()
+}
+async function pnlCommitWages(){
+  const P=G.pnl;const rec=P.preview.wages.records
+  await db.from('wage_import').delete().eq('period_id',P.currentId)
+  const{error}=await db.from('wage_import').insert(rec)
+  if(error){alert('Import failed: '+error.message);return}
+  P.preview.wages=null
+  await pnlLoadPeriodData()
+}
+async function pnlImportIngredients(file){
+  const P=G.pnl
+  const text=await pnlReadFile(file)
+  const rows=pnlParseTSV(text);const header=rows[0];const body=rows.slice(1).filter(r=>r.length>=header.length&&r[0])
+  const records=body.map(r=>{
+    const qm=(r[5]||'').match(/([\d.]+)\s*(ml|L|g|kg)?/i)
+    let qty=qm?parseFloat(qm[1]):0;let unit=(qm&&qm[2])?qm[2].toLowerCase():'ml'
+    if(unit==='l'){qty*=1000;unit='ml'}
+    if(unit==='kg'){qty*=1000;unit='g'}
+    return{ingredient_name:r[0],category:r[1]||null,supplier:r[2]||null,sku:r[3]||null,purchase_price:pnlNum(r[4]),purchase_qty:qty,purchase_unit:unit,vat_rate:pnlNum(r[6])}
+  })
+  P.preview.ingredients={records}
+  render()
+}
+async function pnlCommitIngredients(){
+  const P=G.pnl
+  const{error}=await db.from('ingredient_costs').upsert(P.preview.ingredients.records,{onConflict:'ingredient_name,supplier'})
+  if(error){alert('Import failed: '+error.message);return}
+  P.preview.ingredients=null
+  await pnlLoadStatic();render()
+}
+
+async function pnlAddCost(){
+  const P=G.pnl;const d=P.draftCost
+  if(!P.currentId){alert('Select a week first');return}
+  if(!d.category_id||!d.amount){alert('Category and amount required');return}
+  await db.from('cost_entries').insert({period_id:P.currentId,category_id:d.category_id,amount:pnlNum(d.amount),note:d.note||null})
+  P.draftCost={category_id:'',amount:'',note:''}
+  await pnlLoadPeriodData()
+}
+async function pnlDeleteCost(id){await db.from('cost_entries').delete().eq('id',id);await pnlLoadPeriodData()}
+async function pnlAddFixed(){
+  const P=G.pnl;const d=P.draftFixed
+  if(!d.category_id||!d.amount){alert('Category and weekly amount required');return}
+  await db.from('fixed_costs').insert({category_id:d.category_id,weekly_amount:pnlNum(d.amount),note:d.note||null})
+  P.draftFixed={category_id:'',amount:'',note:''}
+  await pnlLoadStatic();render()
+}
+async function pnlDeleteFixed(id){await db.from('fixed_costs').update({active:false}).eq('id',id);await pnlLoadStatic();render()}
+async function pnlAddRecipe(){
+  const P=G.pnl;const d=P.draftRecipe
+  if(!d.item_name||!d.ingredient_id||!d.qty){alert('Fill in all fields');return}
+  await db.from('recipe_ingredients').insert({item_name:d.item_name.trim(),ingredient_id:d.ingredient_id,quantity_ml:pnlNum(d.qty)})
+  P.draftRecipe={item_name:'',ingredient_id:'',qty:''}
+  await pnlLoadStatic();await pnlLoadPeriodData()
+}
+async function pnlDeleteRecipe(id){await db.from('recipe_ingredients').delete().eq('id',id);await pnlLoadStatic();await pnlLoadPeriodData()}
+
+function renderPnL(app){
+  const P=G.pnl
+  if(!P.loaded&&!P.loading){pnlLoadAll();return}
+  if(P.loading){app.appendChild(modHero('<span class="r">P&amp;L</span>','Weekly profit &amp; loss',[]));const e=el('div','mod-empty');e.textContent='Loading…';app.appendChild(e);return}
+
+  const s=P.summary
+  const revenue=s?s.revenue:0,cogs=s?s.cogs:0,wages=s?s.wages:0,opex=s?s.other_opex:0
+  const gp=revenue-cogs,gpPct=revenue?(gp/revenue*100):0,net=gp-wages-opex
+
+  app.appendChild(modHero('<span class="r">P&amp;L</span>','Weekly profit & loss — Blink imports + recipe-costed COGS',[
+    {value:pnlMoney(revenue),label:'Revenue'},
+    {value:pnlMoney(gp),label:`Gross Profit (${gpPct.toFixed(1)}%)`,color:gpPct>=60?'#4caf50':gpPct>=40?'#ff9800':'#fb0000'},
+    {value:pnlMoney(wages),label:'Wages'},
+    {value:pnlMoney(net),label:'Net Position',color:net>=0?'#4caf50':'#fb0000'},
+  ]))
+
+  // period bar
+  const pbar=el('div','mod-form-grid')
+  pbar.style.marginBottom='14px'
+  const sel=el('select','mod-select')
+  P.periods.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.week_label} — ${p.status}`;if(p.id===P.currentId)o.selected=true;sel.appendChild(o)})
+  sel.onchange=e=>{P.currentId=e.target.value;pnlLoadPeriods().then(pnlLoadPeriodData)}
+  const btnRow=el('div');btnRow.style.display='flex';btnRow.style.gap='8px';btnRow.style.alignItems='center'
+  const newBtn=el('button','mod-btn-out');newBtn.textContent='+ New Week';newBtn.style.padding='9px 14px';newBtn.onclick=pnlNewPeriod
+  const lockBtn=el('button','mod-btn-out');lockBtn.textContent=P.current&&P.current.status==='locked'?'Reopen Week':'Lock Week';lockBtn.style.padding='9px 14px';lockBtn.onclick=pnlToggleLock
+  const pill=el('span','status-pill '+(P.current&&P.current.status==='locked'?'green':'amber'));pill.textContent=P.current?P.current.status:'no week'
+  btnRow.appendChild(pill);btnRow.appendChild(newBtn);btnRow.appendChild(lockBtn)
+  pbar.appendChild(sel);pbar.appendChild(btnRow)
+  app.appendChild(pbar)
+
+  app.appendChild(modTabs([{id:'dashboard',label:'Dashboard'},{id:'import',label:'Import'},{id:'costs',label:'Costs'},{id:'recipes',label:'Recipes'}],P.tab,t=>{P.tab=t;render()}))
+  const body=el('div','mod-body')
+
+  if(!P.currentId){
+    body.innerHTML='<div class="mod-empty">No week selected — create one to get started</div>'
+    app.appendChild(body);return
+  }
+
+  if(P.tab==='dashboard'){
+    const sh=el('div','mod-section-hdr');sh.textContent='Revenue by category';body.appendChild(sh)
+    if(!P.revenue.length){const e=el('div','mod-empty');e.textContent='No sales imported for this week yet';body.appendChild(e)}
+    else P.revenue.forEach(r=>{
+      const c=el('div','mod-card')
+      c.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${r.category}</div><div class="mod-card-sub">${r.type} · ${r.quantity} units</div></div><div class="mod-card-title">${pnlMoney(r.net_sales)}</div></div>`
+      body.appendChild(c)
+    })
+    const sh2=el('div','mod-section-hdr');sh2.textContent=`Unrecipe'd items (${P.unrecipe.length})`;body.appendChild(sh2)
+    if(!P.unrecipe.length){const e=el('div','mod-empty');e.textContent="Every beverage sold has a recipe on file";body.appendChild(e)}
+    else{
+      const banner=el('div','mod-banner');banner.textContent="These are counted at £0 COGS until a recipe is added — GP% is understated by however much they represent.";body.appendChild(banner)
+      P.unrecipe.forEach(u=>{
+        const c=el('div','mod-card warn')
+        c.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${u.item_name}</div><div class="mod-card-sub">${u.category}</div></div><span class="mod-pill amber">No recipe</span></div>`
+        body.appendChild(c)
+      })
+    }
+  }
+
+  else if(P.tab==='import'){
+    // Items
+    const c1=el('div','mod-card')
+    c1.innerHTML='<div class="mod-card-title">Items Summary (Blink) — Revenue</div><div class="mod-card-sub">Item-level export, scoped to this week\'s date range</div>'
+    const f1=el('input');f1.type='file';f1.accept='.csv';f1.style.marginTop='10px'
+    f1.onchange=e=>{if(e.target.files.length)pnlImportItems(e.target.files[0])}
+    c1.appendChild(f1)
+    if(P.preview.items){
+      const pv=el('div','mod-card-body');pv.innerHTML=`${P.preview.items.records.length} items · <strong>${pnlMoney(P.preview.items.total)}</strong> net sales`
+      const cb=el('button','mod-btn');cb.textContent='Commit to '+(P.current?P.current.week_label:'week');cb.style.marginTop='8px';cb.onclick=pnlCommitItems
+      c1.appendChild(pv);c1.appendChild(cb)
+    }
+    body.appendChild(c1)
+
+    // Wages
+    const c2=el('div','mod-card')
+    c2.innerHTML='<div class="mod-card-title">Staff Report (Blink) — Wages</div><div class="mod-card-sub">Employee hours & pay, scoped to this week\'s date range</div>'
+    const f2=el('input');f2.type='file';f2.accept='.csv';f2.style.marginTop='10px'
+    f2.onchange=e=>{if(e.target.files.length)pnlImportWages(e.target.files[0])}
+    c2.appendChild(f2)
+    if(P.preview.wages){
+      const pv=el('div','mod-card-body');pv.innerHTML=`${P.preview.wages.records.length} employees · <strong>${pnlMoney(P.preview.wages.total)}</strong> total pay`
+      c2.appendChild(pv)
+      if(P.preview.wages.flags.length){
+        const fl=el('div','mod-banner');fl.innerHTML=`⚠ ${P.preview.wages.flags.length} row(s) have hours logged at £0 rate — payment will import as £0: ${P.preview.wages.flags.map(f=>f.employee_name).join(', ')}`
+        c2.appendChild(fl)
+      }
+      const cb=el('button','mod-btn');cb.textContent='Commit to '+(P.current?P.current.week_label:'week');cb.style.marginTop='8px';cb.onclick=pnlCommitWages
+      c2.appendChild(cb)
+    }
+    body.appendChild(c2)
+
+    // Ingredients
+    const c3=el('div','mod-card')
+    c3.innerHTML='<div class="mod-card-title">Ingredients (Blink) — Cost prices</div><div class="mod-card-sub">Not period-scoped — re-import only when purchase prices change</div>'
+    const f3=el('input');f3.type='file';f3.accept='.csv';f3.style.marginTop='10px'
+    f3.onchange=e=>{if(e.target.files.length)pnlImportIngredients(e.target.files[0])}
+    c3.appendChild(f3)
+    if(P.preview.ingredients){
+      const pv=el('div','mod-card-body');pv.innerHTML=`${P.preview.ingredients.records.length} ingredients read`
+      const cb=el('button','mod-btn');cb.textContent='Update cost prices';cb.style.marginTop='8px';cb.onclick=pnlCommitIngredients
+      c3.appendChild(pv);c3.appendChild(cb)
+    }
+    body.appendChild(c3)
+  }
+
+  else if(P.tab==='costs'){
+    const sh=el('div','mod-section-hdr');sh.textContent='Add cost entry';body.appendChild(sh)
+    const form=el('div');const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Category',modSelect(P.draftCost.category_id,[['','Select…']].concat(P.costCats.map(c=>[c.id,`${c.name} (${c.group_type})`])),v=>P.draftCost.category_id=v)))
+    grid.appendChild(modField('Amount £',modInput(P.draftCost.amount,v=>P.draftCost.amount=v,'0.00','number')))
+    grid.appendChild(modField('Note',modInput(P.draftCost.note,v=>P.draftCost.note=v,'Optional')))
+    form.appendChild(grid)
+    const acts=el('div','mod-actions');const add=el('button','mod-btn');add.textContent='Add';add.onclick=pnlAddCost
+    acts.appendChild(add);form.appendChild(acts);body.appendChild(form)
+
+    const sh2=el('div','mod-section-hdr');sh2.textContent="This week's entries";body.appendChild(sh2)
+    if(!P.costEntries.length){const e=el('div','mod-empty');e.textContent='No entries yet this week';body.appendChild(e)}
+    else P.costEntries.forEach(c=>{
+      const card=el('div','mod-card')
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${c.cost_categories?.name||'—'}</div><div class="mod-card-sub">${c.note||''}</div></div><div class="mod-card-title">${pnlMoney(c.amount)}</div></div>`
+      const acts2=el('div','mod-actions');const rm=el('button','mod-btn-out');rm.textContent='Remove';rm.onclick=()=>pnlDeleteCost(c.id)
+      acts2.appendChild(rm);card.appendChild(acts2)
+      body.appendChild(card)
+    })
+
+    const sh3=el('div','mod-section-hdr');sh3.textContent='Fixed costs (auto-carried into every new week)';body.appendChild(sh3)
+    const form2=el('div');const grid2=el('div','mod-form-grid')
+    grid2.appendChild(modField('Category',modSelect(P.draftFixed.category_id,[['','Select…']].concat(P.costCats.map(c=>[c.id,c.name])),v=>P.draftFixed.category_id=v)))
+    grid2.appendChild(modField('Weekly amount £',modInput(P.draftFixed.amount,v=>P.draftFixed.amount=v,'0.00','number')))
+    grid2.appendChild(modField('Note',modInput(P.draftFixed.note,v=>P.draftFixed.note=v,'Optional')))
+    form2.appendChild(grid2)
+    const acts3=el('div','mod-actions');const add2=el('button','mod-btn');add2.textContent='Add';add2.onclick=pnlAddFixed
+    acts3.appendChild(add2);form2.appendChild(acts3);body.appendChild(form2)
+    if(!P.fixedCosts.length){const e=el('div','mod-empty');e.textContent='None set';body.appendChild(e)}
+    else P.fixedCosts.forEach(f=>{
+      const card=el('div','mod-card')
+      card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${f.cost_categories?.name||'—'}</div><div class="mod-card-sub">${f.note||''}</div></div><div class="mod-card-title">${pnlMoney(f.weekly_amount)}/wk</div></div>`
+      const acts4=el('div','mod-actions');const rm2=el('button','mod-btn-out');rm2.textContent='Remove';rm2.onclick=()=>pnlDeleteFixed(f.id)
+      acts4.appendChild(rm2);card.appendChild(acts4)
+      body.appendChild(card)
+    })
+  }
+
+  else if(P.tab==='recipes'){
+    const banner=el('div','mod-banner');banner.textContent='Item name must match exactly what appears in the Items Summary export. Straight pours need one row — cocktails need one row per ingredient.';body.appendChild(banner)
+    const form=el('div');const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Item name (as sold)',modInput(P.draftRecipe.item_name,v=>P.draftRecipe.item_name=v,'e.g. The Jamrock')))
+    grid.appendChild(modField('Ingredient',modSelect(P.draftRecipe.ingredient_id,[['','Select…']].concat(P.ingredientOpts.map(i=>[i.id,i.ingredient_name])),v=>P.draftRecipe.ingredient_id=v)))
+    grid.appendChild(modField('Quantity (ml)',modInput(P.draftRecipe.qty,v=>P.draftRecipe.qty=v,'25','number')))
+    form.appendChild(grid)
+    const acts=el('div','mod-actions');const add=el('button','mod-btn');add.textContent='Add';add.onclick=pnlAddRecipe
+    acts.appendChild(add);form.appendChild(acts);body.appendChild(form)
+
+    const sh=el('div','mod-section-hdr');sh.textContent=`Recipes on file (${P.recipeRows.length})`;body.appendChild(sh)
+    if(!P.recipeRows.length){const e=el('div','mod-empty');e.textContent='No recipes on file yet';body.appendChild(e)}
+    else{
+      const grouped={}
+      P.recipeRows.forEach(r=>{(grouped[r.item_name]=grouped[r.item_name]||[]).push(r)})
+      Object.keys(grouped).forEach(name=>{
+        const card=el('div','mod-card')
+        const lines=grouped[name].map(r=>`${r.ingredient_costs?.ingredient_name||'—'} — ${r.quantity_ml}ml`).join('<br>')
+        card.innerHTML=`<div class="mod-card-title">${name}</div><div class="mod-card-body" style="font-size:0.75rem;color:#999">${lines}</div>`
+        const acts2=el('div','mod-actions')
+        grouped[name].forEach(r=>{const rm=el('button','mod-btn-out');rm.textContent='Remove '+(r.ingredient_costs?.ingredient_name||'line');rm.style.marginRight='6px';rm.onclick=()=>pnlDeleteRecipe(r.id);acts2.appendChild(rm)})
+        card.appendChild(acts2)
+        body.appendChild(card)
+      })
+    }
+  }
+
+  app.appendChild(body)
 }
 
 init()
