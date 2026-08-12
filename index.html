@@ -679,7 +679,7 @@ let G={
   // Pest Log
   pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:new Date().toISOString().split('T')[0],reporter:'',severity:'medium',notes:'',action:''},filter:'all'},
   // P&L
-  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},preview:{items:null,wages:null,ingredients:null}},
+  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},preview:{items:null,wages:null,ingredients:null}},
 }
 
 // ============================================================
@@ -4463,6 +4463,16 @@ async function pnlCreatePeriod(dateStr){
   G.pnl.showNewPeriodForm=false
   await pnlLoadPeriods();await pnlLoadPeriodData()
 }
+async function pnlEditPeriodDate(dateStr){
+  const P=G.pnl;if(!P.current||!dateStr)return
+  const monday=pnlMonday(new Date(dateStr+'T12:00:00'))
+  const sunday=new Date(monday);sunday.setDate(sunday.getDate()+6)
+  const label=pnlIsoWeek(monday)
+  const{error}=await db.from('pnl_periods').update({week_label:label,start_date:monday.toISOString().slice(0,10),end_date:sunday.toISOString().slice(0,10)}).eq('id',P.current.id)
+  if(error){alert(error.message.includes('duplicate')?`A week already exists covering ${monday.toLocaleDateString('en-GB')}\u2013${sunday.toLocaleDateString('en-GB')}. Pick a different date, or edit that week directly from the dropdown.`:'Could not update week: '+error.message);return}
+  P.showEditDateForm=false
+  await pnlLoadPeriods();await pnlLoadPeriodData()
+}
 async function pnlToggleLock(){
   const P=G.pnl;if(!P.current)return
   const next=P.current.status==='draft'?'locked':'draft'
@@ -4605,14 +4615,42 @@ function renderPnL(app){
       const lastMon=pnlMonday(new Date());lastMon.setDate(lastMon.getDate()-7)
       P.newPeriodDate=lastMon.toISOString().slice(0,10)
     }
-    P.showNewPeriodForm=!P.showNewPeriodForm;render()
+    P.showNewPeriodForm=!P.showNewPeriodForm;P.showEditDateForm=false;render()
   }
   const lockBtn=el('button','mod-btn-out');lockBtn.textContent=P.current&&P.current.status==='locked'?'Reopen Week':'Lock Week';lockBtn.style.padding='9px 14px';lockBtn.onclick=pnlToggleLock
+  const editDateBtn=el('button','mod-btn-out');editDateBtn.textContent='Edit Dates';editDateBtn.style.padding='9px 14px'
+  editDateBtn.onclick=()=>{
+    if(!P.current)return
+    if(!P.editPeriodDate)P.editPeriodDate=P.current.start_date
+    P.showEditDateForm=!P.showEditDateForm;P.showNewPeriodForm=false;render()
+  }
   const delBtn=el('button','mod-btn-out');delBtn.textContent='Delete Week';delBtn.style.padding='9px 14px';delBtn.style.borderColor='#fb0000';delBtn.style.color='#fb0000';delBtn.onclick=pnlDeletePeriod
   const pill=el('span','status-pill '+(P.current&&P.current.status==='locked'?'green':'amber'));pill.textContent=P.current?P.current.status:'no week'
-  btnRow.appendChild(pill);btnRow.appendChild(newBtn);btnRow.appendChild(lockBtn);btnRow.appendChild(delBtn)
+  btnRow.appendChild(pill);btnRow.appendChild(newBtn);if(P.current)btnRow.appendChild(editDateBtn);btnRow.appendChild(lockBtn);btnRow.appendChild(delBtn)
   pbar.appendChild(sel);pbar.appendChild(btnRow)
   app.appendChild(pbar)
+
+  if(P.showEditDateForm&&P.current){
+    const ef=el('div','mod-card')
+    ef.style.padding='16px 18px'
+    ef.style.borderColor='#fb0000'
+    const warn=el('div');warn.style.fontSize='0.78rem';warn.style.color='#999';warn.style.marginBottom='10px'
+    warn.textContent=`Currently ${P.current.week_label} (${P.current.start_date} to ${P.current.end_date}). Changing the date moves this same week's sales, wages, costs and orders to a new week \u2014 nothing is deleted or re-entered.`
+    ef.appendChild(warn)
+    const previewMon=pnlMonday(new Date(P.editPeriodDate+'T12:00:00'))
+    const previewSun=new Date(previewMon);previewSun.setDate(previewSun.getDate()+6)
+    const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('Any day in the correct week',modInput(P.editPeriodDate,v=>{P.editPeriodDate=v;render()},'','date')))
+    const infoWrap=el('div');infoWrap.style.display='flex';infoWrap.style.flexDirection='column';infoWrap.style.justifyContent='center'
+    infoWrap.innerHTML=`<div style="font-size:0.72rem;color:#666;text-transform:uppercase;letter-spacing:1px">Will become</div><div style="font-weight:800">${pnlIsoWeek(previewMon)} \u2014 ${previewMon.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} to ${previewSun.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>`
+    grid.appendChild(infoWrap)
+    ef.appendChild(grid)
+    const acts=el('div','mod-actions')
+    const save=el('button','mod-btn');save.textContent='Save New Dates';save.onclick=()=>pnlEditPeriodDate(P.editPeriodDate)
+    const cancel=el('button','mod-btn-out');cancel.textContent='Cancel';cancel.onclick=()=>{P.showEditDateForm=false;render()}
+    acts.appendChild(save);acts.appendChild(cancel);ef.appendChild(acts)
+    app.appendChild(ef)
+  }
 
   if(P.showNewPeriodForm){
     const nf=el('div','mod-card')
