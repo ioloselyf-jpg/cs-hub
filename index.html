@@ -4555,7 +4555,38 @@ async function pnlCommitItems(){
   const{error}=await db.from('item_sales_import').insert(rec)
   if(error){alert('Import failed: '+error.message);return}
   P.preview.items=null
+  await pnlAutoCalcCogs()
   await pnlLoadPeriodData()
+}
+async function pnlAutoCalcCogs(){
+  const P=G.pnl
+  if(!P.currentId)return{total:0,coveredQty:0,totalQty:0}
+  const{data:sold}=await db.from('item_sales_import').select('item_name,quantity').eq('period_id',P.currentId)
+  if(!sold||!sold.length)return{total:0,coveredQty:0,totalQty:0}
+  const{data:recipeRows}=await db.from('recipe_ingredients').select('item_name,quantity_ml,ingredient_costs(purchase_price,purchase_qty)')
+  const recipeMap={}
+  ;(recipeRows||[]).forEach(r=>{(recipeMap[r.item_name]=recipeMap[r.item_name]||[]).push(r)})
+  let total=0,coveredQty=0,totalQty=0
+  sold.forEach(s=>{
+    totalQty+=Number(s.quantity)
+    const recipe=recipeMap[s.item_name]
+    if(!recipe||!recipe.length)return
+    let lineUnitCost=0
+    recipe.forEach(r=>{
+      const ic=r.ingredient_costs
+      if(!ic||!ic.purchase_qty)return
+      lineUnitCost+=(ic.purchase_price/ic.purchase_qty)*Number(r.quantity_ml)
+    })
+    coveredQty+=Number(s.quantity)
+    total+=lineUnitCost*Number(s.quantity)
+  })
+  total=Math.round(total*100)/100
+  await db.from('cost_entries').delete().eq('period_id',P.currentId).eq('note','[AUTO] Recipe-costed COGS')
+  const liquorCat=P.costCats.find(c=>/liquor cogs/i.test(c.name))
+  if(liquorCat&&total>0){
+    await db.from('cost_entries').insert({period_id:P.currentId,category_id:liquorCat.id,amount:total,note:'[AUTO] Recipe-costed COGS'})
+  }
+  return{total,coveredQty,totalQty}
 }
 async function pnlImportWages(file){
   const P=G.pnl
@@ -4876,6 +4907,19 @@ function renderPnL(app){
   }
 
   else if(P.tab==='costs'){
+    const rc=el('div','mod-banner')
+    rc.textContent='Liquor COGS is calculated automatically from recipe-linked items whenever sales are imported. If you add or edit recipes after importing, hit Recalculate to refresh this week\'s figure.'
+    body.appendChild(rc)
+    const rcActs=el('div','mod-actions');rcActs.style.marginBottom='14px'
+    const rcBtn=el('button','mod-btn-out');rcBtn.textContent='Recalculate COGS from recipes'
+    rcBtn.onclick=async()=>{
+      rcBtn.textContent='Calculating…';rcBtn.disabled=true
+      const res=await pnlAutoCalcCogs()
+      await pnlLoadPeriodData()
+      alert(`Recipe-costed COGS: ${pnlMoney(res.total)}\n${res.coveredQty} of ${res.totalQty} beverage units sold had a recipe on file.`)
+    }
+    rcActs.appendChild(rcBtn);body.appendChild(rcActs)
+
     const sh=el('div','mod-section-hdr');sh.textContent='Add cost entry';body.appendChild(sh)
     const form=el('div');const grid=el('div','mod-form-grid')
     grid.appendChild(modField('Category',modSelect(P.draftCost.category_id,[['','Select…']].concat(P.costCats.map(c=>[c.id,`${c.name} (${c.group_type})`])),v=>P.draftCost.category_id=v)))
