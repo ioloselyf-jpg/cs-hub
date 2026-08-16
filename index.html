@@ -8,7 +8,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#000;color:#fff;font-family:'aktiv-grotesk','Inter',sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased}
@@ -223,81 +222,6 @@ body{background:#000;color:#fff;font-family:'aktiv-grotesk','Inter',sans-serif;m
 .col-h{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.53rem;letter-spacing:2px;text-transform:uppercase;color:#444}
 .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
-/* WORLD CUP */
-.fixture{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:11px 14px;background:#0a0a0a;border-left:3px solid #111;margin-bottom:2px}
-.fixture.england{border-left-color:#fb0000;background:#0d0808}
-.team{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:800;font-size:0.88rem;letter-spacing:2px;text-transform:uppercase;color:#ddd}
-.team.eng{color:#fff}.team-right{text-align:right}
-.match-info{text-align:center}
-.match-time{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:1rem;color:#fff;letter-spacing:1px}
-.match-time.eng-time{color:#fb0000}
-.match-vs{font-size:0.52rem;letter-spacing:3px;color:#777;text-transform:uppercase}
-.match-stage{font-size:0.56rem;color:#777;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
-.match-venue{font-size:0.56rem;color:#666;letter-spacing:1px;text-transform:uppercase;margin-top:1px}
-.eng-tag{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.56rem;letter-spacing:2px;color:#fb0000;border:1px solid #fb0000;padding:1px 5px;text-transform:uppercase;display:inline-block;margin-top:3px}
-.date-group{margin-bottom:18px}
-.date-hdr{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:800;font-size:0.75rem;letter-spacing:4px;text-transform:uppercase;color:#888;padding:7px 0;border-bottom:1px solid #111;margin-bottom:6px}
-.date-hdr.eng-day{color:#fb0000}
-.next-eng{background:#0d0808;border:1px solid #fb0000;padding:16px 18px;margin-bottom:18px}
-.next-eng-label{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.58rem;letter-spacing:4px;text-transform:uppercase;color:#fb0000;margin-bottom:8px}
-.next-eng-match{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:1.3rem;letter-spacing:2px;text-transform:uppercase;color:#fff}
-.next-eng-detail{font-size:0.7rem;color:#888;margin-top:3px}
-.next-eng-cd{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:0.9rem;color:#fb0000;letter-spacing:2px;margin-top:5px;text-transform:uppercase}
-.filter-btns{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px}
-.filter-btn{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;padding:6px 12px;border:1px solid #222;background:none;color:#666;cursor:pointer;font-weight:700;transition:all 0.15s}
-.filter-btn:hover{border-color:#888;color:#fff}.filter-btn.on{background:#fb0000;border-color:#fb0000;color:#fff}
-
-/* LOYALTY */
-.loyalty-card{background:#0a0a0a;border:1px solid #222;overflow:hidden;margin-bottom:14px}
-.lc-top{background:#fb0000;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
-.lc-brand{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:1rem;letter-spacing:3px;text-transform:uppercase;color:#fff}
-.lc-name{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:1.3rem;letter-spacing:2px;text-transform:uppercase;color:#fff;margin-top:2px}
-.lc-id{font-size:0.57rem;letter-spacing:3px;color:rgba(255,255,255,0.6);margin-top:2px;font-family:'aktiv-grotesk','Inter',sans-serif}
-.lc-body{padding:18px}
-.pints-track{display:flex;gap:7px;margin:13px 0;flex-wrap:wrap}
-.pint-dot{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all 0.3s}
-.pint-filled{background:#fb0000;border:2px solid #fb0000}
-.pint-empty{background:#111;border:2px dashed #222}
-.pint-free{background:#4caf50;border:2px solid #4caf50}
-.lc-progress{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.67rem;letter-spacing:2px;text-transform:uppercase;color:#888;margin-top:7px}
-.free-banner{background:#4caf50;padding:10px 14px;text-align:center;margin-top:10px}
-.free-banner .ft{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:3px;text-transform:uppercase;color:#fff}
-.free-banner .fs{font-size:0.68rem;color:rgba(255,255,255,0.8);margin-top:2px}
-.qr-wrap{text-align:center;padding:14px;border-top:1px solid #111}
-.qr-label{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.57rem;letter-spacing:3px;text-transform:uppercase;color:#555;margin-top:7px}
-.lc-hist{border-top:1px solid #0d0d0d;padding:12px 18px}
-.hist-title{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;color:#777;margin-bottom:7px}
-.hist-row{display:flex;justify-content:space-between;font-size:0.68rem;color:#666;padding:4px 0;border-bottom:1px solid #080808}
-.hist-row:last-child{border-bottom:none}
-.hist-row span{color:#888}
-.scanner-wrap{position:relative;width:100%;max-width:300px;margin:0 auto 10px;border:2px solid #fb0000}
-.scanner-wrap video{width:100%;display:block;background:#000}
-.scanner-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.scanner-box{width:60%;height:60%;border:2px solid #fb0000;position:relative}
-.scan-line{position:absolute;top:0;left:0;right:0;height:2px;background:#fb0000;animation:scanm 1.5s linear infinite}
-@keyframes scanm{0%{top:0}100%{top:100%}}
-.scan-status{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;text-align:center;padding:6px;color:#888}
-.scan-status.active{color:#fb0000}
-.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:16px}
-.stat-box{background:#0d0d0d;padding:12px;text-align:center}
-.stat-num{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:1.5rem;color:#fb0000;line-height:1}
-.stat-lbl{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.53rem;letter-spacing:2px;color:#666;margin-top:3px;text-transform:uppercase}
-.scan-result{padding:12px 14px;background:#111;border:1px solid #1a1a1a;margin-top:10px}
-.scan-result.valid{border-color:#4caf50;background:rgba(76,175,80,0.05)}
-.scan-result.invalid{border-color:#fb0000;background:rgba(251,0,0,0.05)}
-.res-name{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:800;font-size:0.95rem;letter-spacing:2px;text-transform:uppercase}
-.res-name.vn{color:#4caf50}.res-name.in{color:#fb0000}
-.res-detail{font-size:0.7rem;color:#777;margin-top:3px}
-.stamp-btn{width:100%;font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:0.85rem;letter-spacing:2px;text-transform:uppercase;padding:11px;background:#fb0000;border:none;color:#fff;cursor:pointer;margin-top:8px}
-.stamp-btn:hover{background:#9e0c23}
-.redeem-btn{width:100%;font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:0.85rem;letter-spacing:2px;text-transform:uppercase;padding:11px;background:#4caf50;border:none;color:#fff;cursor:pointer;margin-top:6px}
-.redeem-btn:hover{background:#388e3c}
-.staff-panel{background:#0a0a0a;border:1px solid #1a1a1a;padding:18px;margin-bottom:14px}
-.staff-panel-title{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:800;font-size:0.85rem;letter-spacing:3px;text-transform:uppercase;color:#fff;margin-bottom:12px}
-.cd-strip{display:flex;gap:1px;justify-content:center;margin-top:18px}
-.cd-box{background:#0d0d0d;border:1px solid #1a1a1a;padding:9px 16px;text-align:center;min-width:64px}
-.cd-num{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:1.8rem;color:#fb0000;line-height:1}
-.cd-lbl{font-family:'aktiv-grotesk','Inter',sans-serif;font-size:0.52rem;letter-spacing:2px;color:#555;margin-top:2px;text-transform:uppercase}
 
 /* COMPLIANCE COSTS */
 .cost-panel{border-bottom:1px solid #111;background:#080808;margin-bottom:2px}
@@ -621,7 +545,6 @@ body{background:#000;color:#fff;font-family:'aktiv-grotesk','Inter',sans-serif;m
   .cost-overview{grid-template-columns:1fr 1fr}
   .cost-summary{grid-template-columns:1fr}
   .cost-block{border-right:none;border-bottom:1px solid #111}
-  .fixture{gap:6px;padding:9px 12px}.team{font-size:0.78rem}
   .field-grid{grid-template-columns:1fr}
   .train-edit-row{grid-template-columns:1fr 100px 100px}
   .fab{bottom:70px;right:14px}
@@ -678,7 +601,6 @@ const SUPABASE_URL='https://yiyjptjzpnkjxqpgycsk.supabase.co'
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpeWpwdGp6cG5ranhxcGd5Y3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Mjc0MTYsImV4cCI6MjA5MjMwMzQxNn0.DNHJ3e9qR0EQV3we-1f36RJPtg9fL42BZqn6jnvLVeI'
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
 const STAFF_PIN='1738'
-const PINTS_FOR_FREE=5
 
 // ============================================================
 // GLOBAL STATE
@@ -686,7 +608,7 @@ const PINTS_FOR_FREE=5
 let G={
   screen:'dash',
   status:'connecting',
-  unlocked:{compliance:false,fire:false,wcstaff:false,cash:false,pest:false},
+  unlocked:{compliance:false,fire:false,cash:false,pest:false},
   pinTarget:null,
   pinInput:'',
   pinError:false,
@@ -699,8 +621,6 @@ let G={
   fire:{tab:'assess',openSecs:{premises:true},responses:{},premNotes:{},assessorName:'',assessorRole:'',assessorDate:new Date().toISOString().split('T')[0],reviewDate:'',files:{},scanning:false,scanErr:null,saving:false},
   // Training
   train:{tab:'staff',staff:[],openCards:{},editData:{},filterText:''},
-  // World Cup
-  wc:{tab:'fixtures',filter:'all',searchName:'',currentCard:null,cards:[],scanId:'',scanResult:null,scanning:false,scanErr:null,newName:'',newPhone:''},
   // Premises Checks
   prem:{tab:'kitchen',shift:'Opening',signedBy:'',checks:{},flags:{},notes:{},saving:false,saved:false,history:[],histView:'checks',histLoading:false,histLoaded:false,histFilter:{section:'all',shift:'all'},histOpen:{}},
   // Power test draft (persists across tab switches)
@@ -761,7 +681,6 @@ const DASH_CARDS=[
   {id:'power',icon:'⚡',name:'Load Test',desc:'Meter spike test for fridges, freezers and 3 large heaters. Upload before/after meter photos and calculate kW.',locked:true},
   {id:'fire',icon:'🔥',name:'Fire Safety',desc:'Full PAS 79 fire risk assessment with evidence uploads and printable report.',locked:true},
   {id:'training',icon:'👥',name:'Staff Training',desc:'Track staff certifications, expiry dates, and compliance across the whole team.',locked:true},
-  {id:'worldcup',icon:'⚽',name:'World Cup 2026',desc:'Full fixture schedule, England games, and pint loyalty card system.',locked:true},
   {id:'pest',icon:'🐭',name:'Pest Log',desc:'Log rodent and insect sightings by location and severity. Auto-alerts when EHO risk threshold is reached.',locked:true},
   {id:'pnl',icon:'📈',name:'P&L',desc:'Weekly profit & loss — Blink imports for revenue and wages, automated COGS from recipes, manual entry for the rest.',locked:true},
 ]
@@ -817,13 +736,13 @@ function render(){
   const lw=el('div')
   const logo=el('div','logo')
   logo.innerHTML='<span class="r">cHIP</span> sHOP BXTN'
-  logo.onclick=()=>{G.screen='dash';stopScan();render()}
+  logo.onclick=()=>{G.screen='dash';render()}
   const sub=el('span','logo-sub');sub.textContent='Operations Hub'
   logo.appendChild(sub);lw.appendChild(logo)
   const hr=el('div','hdr-right')
   if(G.screen!=='dash'){
     const back=el('button','back-btn');back.textContent='← Dashboard'
-    back.onclick=()=>{G.screen='dash';stopScan();render()}
+    back.onclick=()=>{G.screen='dash';render()}
     hr.appendChild(back)
   }
   const badge=el('div','sbadge '+(G.status==='live'?'s-live':'s-conn'))
@@ -851,7 +770,6 @@ function render(){
     else if(G.screen==='fire') renderFire(app)
     else if(G.screen==='training') renderTraining(app)
     else if(G.screen==='premises') renderPremises(app)
-    else if(G.screen==='worldcup') renderWorldCup(app)
     else if(G.screen==='pest') renderPestLog(app)
     else if(G.screen==='pnl') renderPnL(app)
   }
@@ -2146,315 +2064,6 @@ async function archiveStaff(id){
 }
 
 // ============================================================
-// ============ WORLD CUP ============
-// ============================================================
-const FIXTURES=[
-  {id:'g1',date:'2026-06-11',time:'21:00',home:'Mexico',away:'South Africa',hf:'🇲🇽',af:'🇿🇦',stage:'Group A',venue:'Mexico City',england:false},
-  {id:'g2',date:'2026-06-12',time:'00:00',home:'USA',away:'Paraguay',hf:'🇺🇸',af:'🇵🇾',stage:'Group D',venue:'Los Angeles',england:false},
-  {id:'g3',date:'2026-06-12',time:'18:00',home:'Canada',away:'Bosnia & Herz.',hf:'🇨🇦',af:'🇧🇦',stage:'Group B',venue:'Toronto',england:false},
-  {id:'g4',date:'2026-06-13',time:'00:00',home:'Argentina',away:'Jordan',hf:'🇦🇷',af:'🇯🇴',stage:'Group I',venue:'Dallas',england:false},
-  {id:'g5',date:'2026-06-13',time:'18:00',home:'Spain',away:'Sweden',hf:'🇪🇸',af:'🇸🇪',stage:'Group J',venue:'Kansas City',england:false},
-  {id:'g6',date:'2026-06-13',time:'21:00',home:'Germany',away:'Turkey',hf:'🇩🇪',af:'🇹🇷',stage:'Group G',venue:'Seattle',england:false},
-  {id:'g7',date:'2026-06-14',time:'00:00',home:'France',away:'Norway',hf:'🇫🇷',af:'🇳🇴',stage:'Group H',venue:'San Francisco',england:false},
-  {id:'g8',date:'2026-06-14',time:'18:00',home:'Portugal',away:'Uzbekistan',hf:'🇵🇹',af:'🇺🇿',stage:'Group K',venue:'Houston',england:false},
-  {id:'g9',date:'2026-06-14',time:'21:00',home:'Brazil',away:'Haiti',hf:'🇧🇷',af:'🇭🇹',stage:'Group F',venue:'Philadelphia',england:false},
-  {id:'g10',date:'2026-06-15',time:'00:00',home:'Netherlands',away:'Austria',hf:'🇳🇱',af:'🇦🇹',stage:'Group E',venue:'Atlanta',england:false},
-  {id:'g11',date:'2026-06-15',time:'18:00',home:'Morocco',away:'Scotland',hf:'🇲🇦',af:'🏴󠁧󠁢󠁳󠁣󠁴󠁿',stage:'Group C',venue:'Boston',england:false},
-  {id:'g12',date:'2026-06-15',time:'21:00',home:'Italy',away:'Ecuador',hf:'🇮🇹',af:'🇪🇨',stage:'Group E',venue:'Miami',england:false},
-  {id:'g13',date:'2026-06-16',time:'21:00',home:'Colombia',away:'Curaçao',hf:'🇨🇴',af:'🇨🇼',stage:'Group H',venue:'Guadalajara',england:false},
-  {id:'g14',date:'2026-06-17',time:'00:00',home:'South Korea',away:'Mexico',hf:'🇰🇷',af:'🇲🇽',stage:'Group A',venue:'Guadalajara',england:false},
-  {id:'eng1',date:'2026-06-17',time:'21:00',home:'England',away:'Croatia',hf:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',af:'🇭🇷',stage:'Group L',venue:'Dallas',england:true},
-  {id:'g15',date:'2026-06-17',time:'23:00',home:'Ghana',away:'Panama',hf:'🇬🇭',af:'🇵🇦',stage:'Group L',venue:'Toronto',england:false},
-  {id:'g16',date:'2026-06-18',time:'00:00',home:'Uruguay',away:'Iraq',hf:'🇺🇾',af:'🇮🇶',stage:'Group J',venue:'Kansas City',england:false},
-  {id:'g17',date:'2026-06-18',time:'21:00',home:'Australia',away:'USA',hf:'🇦🇺',af:'🇺🇸',stage:'Group D',venue:'Seattle',england:false},
-  {id:'g18',date:'2026-06-19',time:'21:00',home:'Qatar',away:'Canada',hf:'🇶🇦',af:'🇨🇦',stage:'Group B',venue:'Vancouver',england:false},
-  {id:'g19',date:'2026-06-20',time:'21:00',home:'Belgium',away:'New Zealand',hf:'🇧🇪',af:'🇳🇿',stage:'Group K',venue:'Vancouver',england:false},
-  {id:'g20',date:'2026-06-21',time:'21:00',home:'Scotland',away:'Brazil',hf:'🏴󠁧󠁢󠁳󠁣󠁴󠁿',af:'🇧🇷',stage:'Group C',venue:'Miami',england:false},
-  {id:'g21',date:'2026-06-22',time:'21:00',home:'Spain',away:'Uruguay',hf:'🇪🇸',af:'🇺🇾',stage:'Group J',venue:'Houston',england:false},
-  {id:'g22',date:'2026-06-22',time:'23:00',home:'Germany',away:'Saudi Arabia',hf:'🇩🇪',af:'🇸🇦',stage:'Group G',venue:'Miami',england:false},
-  {id:'eng2',date:'2026-06-23',time:'21:00',home:'England',away:'Ghana',hf:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',af:'🇬🇭',stage:'Group L',venue:'Boston',england:true},
-  {id:'g23',date:'2026-06-23',time:'23:00',home:'Panama',away:'Croatia',hf:'🇵🇦',af:'🇭🇷',stage:'Group L',venue:'Toronto',england:false},
-  {id:'g24',date:'2026-06-24',time:'21:00',home:'France',away:'Belgium',hf:'🇫🇷',af:'🇧🇪',stage:'Group H',venue:'Boston',england:false},
-  {id:'g25',date:'2026-06-25',time:'00:00',home:'Portugal',away:'Colombia',hf:'🇵🇹',af:'🇨🇴',stage:'Group K',venue:'Miami',england:false},
-  {id:'g26',date:'2026-06-25',time:'21:00',home:'Argentina',away:'Iraq',hf:'🇦🇷',af:'🇮🇶',stage:'Group I',venue:'New Jersey',england:false},
-  {id:'eng3',date:'2026-06-27',time:'22:00',home:'Panama',away:'England',hf:'🇵🇦',af:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',stage:'Group L',venue:'New Jersey',england:true},
-  {id:'g27',date:'2026-06-27',time:'22:00',home:'Croatia',away:'Ghana',hf:'🇭🇷',af:'🇬🇭',stage:'Group L',venue:'Philadelphia',england:false},
-  {id:'qf1',date:'2026-07-04',time:'18:00',home:'TBD',away:'TBD',hf:'🏳',af:'🏳',stage:'Quarter-Final',venue:'Houston',england:false},
-  {id:'qf2',date:'2026-07-05',time:'21:00',home:'TBD',away:'TBD',hf:'🏳',af:'🏳',stage:'Quarter-Final',venue:'New Jersey',england:false},
-  {id:'sf1',date:'2026-07-09',time:'21:00',home:'TBD',away:'TBD',hf:'🏳',af:'🏳',stage:'Semi-Final',venue:'Boston',england:false},
-  {id:'sf2',date:'2026-07-10',time:'20:00',home:'TBD',away:'TBD',hf:'🏳',af:'🏳',stage:'Semi-Final',venue:'Los Angeles',england:false},
-  {id:'final',date:'2026-07-19',time:'21:00',home:'TBD',away:'TBD',hf:'🏳',af:'🏳',stage:'⭐ FINAL',venue:'New Jersey',england:false},
-]
-
-function getCountdown(date,time){
-  const target=new Date(date+'T'+time+':00')
-  const diff=target-new Date()
-  if(diff<=0)return null
-  return{days:Math.floor(diff/86400000),hours:Math.floor((diff%86400000)/3600000),mins:Math.floor((diff%3600000)/60000)}
-}
-
-function nextEngland(){return FIXTURES.filter(f=>f.england).find(f=>new Date(f.date+'T'+f.time+':00')>new Date())}
-
-function renderWorldCup(app){
-  const WC=G.wc
-  const cd=getCountdown('2026-06-11','21:00')
-
-  const hero=el('div','hero')
-  hero.innerHTML=`<div class="ht">World <span class="r">Cup</span></div><div class="hero-sub">USA · Canada · Mexico — 11 Jun – 19 Jul 2026</div>`
-  if(cd){
-    const strip=el('div','cd-strip')
-    ;[{v:cd.days,l:'Days'},{v:cd.hours,l:'Hours'},{v:cd.mins,l:'Mins'}].forEach(({v,l})=>{
-      const b=el('div','cd-box');b.innerHTML=`<div class="cd-num">${v}</div><div class="cd-lbl">${l}</div>`;strip.appendChild(b)
-    })
-    hero.appendChild(strip)
-  }
-  app.appendChild(hero)
-
-  const tabs=el('div','tabs')
-  ;[['fixtures','⚽ Fixtures','Match schedule'],['loyalty','🍺 Loyalty','Pint cards'],['staff','🔑 Staff','Stamp & redeem']].forEach(([key,label,sub2])=>{
-    const t=el('button','tab'+(WC.tab===key?' on':''))
-    t.innerHTML=`${label}<span class="tab-ct">${sub2}</span>`
-    t.onclick=()=>{
-      if(key!=='staff')stopScan()
-      if(WC.tab==='staff'&&key!=='staff')G.unlocked.wcstaff=false
-      WC.tab=key;render()
-    }
-    tabs.appendChild(t)
-  })
-  app.appendChild(tabs)
-
-  const main=el('div','section-wrap')
-
-  if(WC.tab==='fixtures'){
-    const next=nextEngland()
-    if(next){
-      const ncd=getCountdown(next.date,next.time)
-      const nb=el('div','next-eng')
-      nb.innerHTML=`<div class="next-eng-label">⭐ Next England Game</div><div class="next-eng-match">${next.home} ${next.hf} vs ${next.af} ${next.away}</div><div class="next-eng-detail">${new Date(next.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})} · ${next.time} UK · ${next.venue}</div>${ncd?`<div class="next-eng-cd">${ncd.days}d ${ncd.hours}h ${ncd.mins}m to kick-off</div>`:'<div class="next-eng-cd" style="color:#4caf50">🔴 LIVE NOW</div>'}`
-      main.appendChild(nb)
-    }
-    const fb=el('div','filter-btns')
-    ;[['all','All Matches'],['england','🏴󠁧󠁢󠁥󠁮󠁧󠁿 England Only'],['today','Today']].forEach(([key,label])=>{
-      const b=el('button','filter-btn'+(WC.filter===key?' on':''));b.textContent=label
-      b.onclick=()=>{WC.filter=key;render()};fb.appendChild(b)
-    })
-    main.appendChild(fb)
-    let fixtures=FIXTURES
-    if(WC.filter==='england')fixtures=FIXTURES.filter(f=>f.england)
-    if(WC.filter==='today')fixtures=FIXTURES.filter(f=>f.date===todayStr())
-    const grouped={}
-    fixtures.forEach(f=>{if(!grouped[f.date])grouped[f.date]=[];grouped[f.date].push(f)})
-    if(!Object.keys(grouped).length){const e=el('div','empty-state');e.textContent='No matches today';main.appendChild(e)}
-    Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).forEach(([date,dayFix])=>{
-      const hasEng=dayFix.some(f=>f.england)
-      const dg=el('div','date-group')
-      const dh=el('div','date-hdr'+(hasEng?' eng-day':''))
-      dh.textContent=new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+(hasEng?' ⭐ ENGLAND':'')
-      dg.appendChild(dh)
-      dayFix.forEach(f=>{
-        const fix=el('div','fixture'+(f.england?' england':''))
-        fix.innerHTML=`<div><div class="team${f.home==='England'?' eng':''}">${f.hf} ${f.home}</div></div><div class="match-info"><div class="match-time${f.england?' eng-time':''}">${f.time}</div><div class="match-vs">UK TIME</div><div class="match-stage">${f.stage}</div><div class="match-venue">${f.venue}</div>${f.england?'<div class="eng-tag">⭐ ENG</div>':''}</div><div class="team-right"><div class="team${f.away==='England'?' eng':''}">${f.away} ${f.af}</div></div>`
-        dg.appendChild(fix)
-      })
-      main.appendChild(dg)
-    })
-  } else if(WC.tab==='loyalty'){
-    const intro=el('div');intro.style.cssText='margin-bottom:18px'
-    intro.innerHTML=`<div style="font-family:aktiv-grotesk,Inter,sans-serif;font-weight:800;font-size:0.88rem;letter-spacing:3px;text-transform:uppercase;color:#fff;margin-bottom:5px">🍺 World Cup Pint Loyalty Card</div><div style="font-size:0.73rem;color:#666;line-height:1.6">Buy ${PINTS_FOR_FREE} pints, get 1 FREE. Show your card to staff to get stamped.</div>`
-    main.appendChild(intro)
-    const sb=el('div');sb.style.cssText='display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap'
-    const si=el('input','txt-input');si.placeholder='Enter your name to find your card…';si.value=WC.searchName;si.style.flex='1'
-    si.oninput=e=>{WC.searchName=e.target.value};si.onkeydown=e=>{if(e.key==='Enter')searchLoyaltyCard()}
-    const sfb=el('button','btn-red');sfb.textContent='Find Card';sfb.onclick=searchLoyaltyCard
-    const nb=el('button','btn-outline');nb.textContent='+ New Card';nb.onclick=()=>{G.modal={type:'newcard'};render()}
-    sb.appendChild(si);sb.appendChild(sfb);sb.appendChild(nb);main.appendChild(sb)
-    if(WC.currentCard)renderLoyaltyCard(main,WC.currentCard)
-    else if(WC.cards.length){
-      const rl=el('div');rl.innerHTML=`<div style="font-family:aktiv-grotesk,Inter,sans-serif;font-size:0.62rem;letter-spacing:3px;text-transform:uppercase;color:#555;margin-bottom:8px">Recent Cards</div>`
-      WC.cards.slice(0,5).forEach(c=>{
-        const row=el('div');row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:#0a0a0a;border-left:3px solid #1a1a1a;margin-bottom:2px;cursor:pointer'
-        row.innerHTML=`<div><div style="font-family:aktiv-grotesk,Inter,sans-serif;font-weight:700;font-size:0.82rem;letter-spacing:2px;text-transform:uppercase;color:#ddd">${c.name}</div><div style="font-size:0.62rem;color:#666;margin-top:1px">${c.pints}/${PINTS_FOR_FREE} pints</div></div><div style="font-family:aktiv-grotesk,Inter,sans-serif;font-size:0.68rem;color:${c.pints>=PINTS_FOR_FREE?'#4caf50':'#444'}">${c.pints>=PINTS_FOR_FREE?'🍺 FREE!':c.pints+' stamps'}</div>`
-        row.onclick=()=>{WC.currentCard=c;render()};rl.appendChild(row)
-      })
-      main.appendChild(rl)
-    }
-    if(G.modal?.type==='newcard'){
-      const bg=el('div','modal-bg');bg.onclick=e=>{if(e.target===bg){G.modal=null;render()}}
-      const modal=el('div','modal')
-      const mhdr=el('div','modal-hdr');mhdr.innerHTML='<div class="modal-title">New Loyalty Card</div>'
-      const mc=el('button','modal-close');mc.textContent='✕';mc.onclick=()=>{G.modal=null;render()};mhdr.appendChild(mc);modal.appendChild(mhdr)
-      const mb=el('div','modal-body')
-      const nl=el('span','field-label');nl.textContent='Customer Name'
-      const ni=el('input','txt-input');ni.placeholder='Full name…';ni.value=WC.newName;ni.oninput=e=>{WC.newName=e.target.value}
-      const pl=el('span','field-label');pl.textContent='Phone (optional)'
-      const pi=el('input','txt-input');pi.placeholder='07…';pi.value=WC.newPhone;pi.type='tel';pi.oninput=e=>{WC.newPhone=e.target.value}
-      mb.appendChild(nl);mb.appendChild(ni);mb.appendChild(pl);mb.appendChild(pi);modal.appendChild(mb)
-      const mf=el('div','modal-foot')
-      const cc=el('button','btn-cancel');cc.textContent='Cancel';cc.onclick=()=>{G.modal=null;render()}
-      const sv=el('button','btn-red');sv.textContent='Create Card';sv.onclick=createLoyaltyCard
-      mf.appendChild(cc);mf.appendChild(sv);modal.appendChild(mf);bg.appendChild(modal);app.appendChild(bg)
-    }
-  } else {
-    // Staff tab — PIN protected
-    if(!G.unlocked.wcstaff){renderPin('wcstaff',app);app.appendChild(main);return}
-    // Stats
-    const sg=el('div','stat-grid')
-    ;[{n:WC.cards.length,l:'Cards Issued'},{n:WC.cards.reduce((s,c)=>s+c.pints,0),l:'Pints Stamped'},{n:WC.cards.filter(c=>c.pints>=PINTS_FOR_FREE).length,l:'Free Pints Due'}].forEach(s=>{
-      const b=el('div','stat-box');b.innerHTML=`<div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div>`;sg.appendChild(b)
-    })
-    main.appendChild(sg)
-    // Scanner
-    const sp=el('div','staff-panel');sp.innerHTML='<div class="staff-panel-title">📱 Scan Customer QR Code</div>'
-    if(!G.wc.scanning){
-      const scanBtn=el('button','btn-red');scanBtn.style.width='100%';scanBtn.textContent='📷 Open Camera Scanner';scanBtn.onclick=()=>{G.wc.scanning=true;G.wc.scanResult=null;render()};sp.appendChild(scanBtn)
-    } else {
-      const sw=el('div','scanner-wrap')
-      const vid=el('video');vid.id='scanner-video';vid.setAttribute('playsinline','')
-      const sov=el('div','scanner-overlay');const sbox=el('div','scanner-box');const sline=el('div','scan-line')
-      sbox.appendChild(sline);sov.appendChild(sbox);sw.appendChild(vid);sw.appendChild(sov);sp.appendChild(sw)
-      const ss=el('div','scan-status active');ss.textContent=G.wc.scanErr||'Point camera at QR code…';sp.appendChild(ss)
-      const stopBtn=el('button','btn-outline');stopBtn.style.cssText='width:100%;margin-top:6px';stopBtn.textContent='✕ Stop';stopBtn.onclick=stopScan;sp.appendChild(stopBtn)
-      setTimeout(()=>initScan(),100)
-    }
-    const div2=el('div');div2.style.cssText='text-align:center;font-family:aktiv-grotesk,Inter,sans-serif;font-size:0.58rem;letter-spacing:3px;text-transform:uppercase;color:#333;margin:8px 0'
-    div2.textContent='— or enter card ID —'
-    const mr=el('div');mr.style.cssText='display:flex;gap:6px'
-    const mi=el('input','txt-input');mi.placeholder='Paste card ID…';mi.value=WC.scanId;mi.oninput=e=>{WC.scanId=e.target.value};mi.onkeydown=e=>{if(e.key==='Enter')lookupLoyalty(WC.scanId)}
-    const mb=el('button','btn-red');mb.textContent='Look Up';mb.onclick=()=>lookupLoyalty(WC.scanId)
-    mr.appendChild(mi);mr.appendChild(mb);sp.appendChild(div2);sp.appendChild(mr)
-    if(WC.scanResult){
-      const sr=WC.scanResult;const valid=sr.found
-      const res=el('div','scan-result '+(valid?'valid':'invalid'))
-      if(valid){
-        const hasFree=sr.card.pints>=PINTS_FOR_FREE
-        res.innerHTML=`<div class="res-name vn">${sr.card.name}</div><div class="res-detail">${sr.card.pints}/${PINTS_FOR_FREE} pints${hasFree?' — 🍺 FREE PINT READY':''}</div>`
-        if(!hasFree){const sb2=el('button','stamp-btn');sb2.textContent=`✓ Stamp — Add 1 Pint (${sr.card.pints+1}/${PINTS_FOR_FREE})`;sb2.onclick=()=>stampCard(sr.card.id);res.appendChild(sb2)}
-        else{
-          const rb=el('button','redeem-btn');rb.textContent='🍺 Redeem Free Pint';rb.onclick=()=>redeemPint(sr.card.id);res.appendChild(rb)
-          const sb3=el('button','stamp-btn');sb3.style.background='#ff9800';sb3.textContent='Stamp Without Redeeming';sb3.onclick=()=>stampCard(sr.card.id);res.appendChild(sb3)
-        }
-      } else {res.innerHTML=`<div class="res-name in">Card Not Found</div><div class="res-detail">No card with this ID.</div>`}
-      sp.appendChild(res)
-    }
-    main.appendChild(sp)
-    // All cards list
-    const cl=el('div','staff-panel');cl.innerHTML='<div class="staff-panel-title">All Cards</div>'
-    WC.cards.forEach(c=>{
-      const row=el('div');row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #0d0d0d;gap:10px'
-      row.innerHTML=`<div style="flex:1"><div style="font-family:aktiv-grotesk,Inter,sans-serif;font-weight:700;font-size:0.78rem;letter-spacing:2px;text-transform:uppercase;color:#ddd">${c.name}</div><div style="font-size:0.58rem;color:#444;margin-top:1px">#${c.id.slice(0,8).toUpperCase()}</div></div><div style="font-family:aktiv-grotesk,Inter,sans-serif;font-size:0.72rem;color:${c.pints>=PINTS_FOR_FREE?'#4caf50':'#555'}">${c.pints>=PINTS_FOR_FREE?'🍺 FREE!':c.pints+'/'+PINTS_FOR_FREE}</div><button style="font-family:aktiv-grotesk,Inter,sans-serif;font-size:0.58rem;letter-spacing:1px;text-transform:uppercase;padding:4px 9px;background:none;border:1px solid #222;color:#555;cursor:pointer" onclick="stampCard('${c.id}')">+1</button>`
-      cl.appendChild(row)
-    })
-    main.appendChild(cl)
-  }
-  app.appendChild(main)
-}
-
-function renderLoyaltyCard(main,card){
-  const hasFree=card.pints>=PINTS_FOR_FREE
-  const div=el('div','loyalty-card')
-  const top=el('div','lc-top')
-  top.innerHTML=`<div><div class="lc-brand">cHIP sHOP BXTN — World Cup 2026</div><div class="lc-name">${card.name}</div><div class="lc-id">#${card.id.slice(0,8).toUpperCase()}</div></div><div style="font-size:2rem">🍺</div>`
-  div.appendChild(top)
-  const body=el('div','lc-body')
-  body.innerHTML=`<div style="font-family:aktiv-grotesk,Inter,sans-serif;font-size:0.62rem;letter-spacing:3px;text-transform:uppercase;color:#666;margin-bottom:10px">Buy ${PINTS_FOR_FREE} pints get 1 FREE</div>`
-  const dots=el('div','pints-track')
-  for(let i=0;i<PINTS_FOR_FREE;i++){const d=el('div',i<card.pints?'pint-dot pint-filled':'pint-dot pint-empty');d.textContent=i<card.pints?'🍺':'';dots.appendChild(d)}
-  body.appendChild(dots)
-  body.innerHTML+=`<div class="lc-progress">${hasFree?'🎉 FREE PINT READY!':card.pints+'/'+PINTS_FOR_FREE+' pints — '+(PINTS_FOR_FREE-card.pints)+' more until free'}</div>`
-  div.appendChild(body)
-  if(hasFree){const fb=el('div','free-banner');fb.innerHTML=`<div class="ft">🍺 FREE PINT!</div><div class="fs">Show to staff to claim</div>`;div.appendChild(fb)}
-  const qw=el('div','qr-wrap')
-  const qd=el('div');qd.style.display='inline-block';qw.appendChild(qd)
-  const ql=el('div','qr-label');ql.textContent='Staff scan to stamp your card';qw.appendChild(ql)
-  div.appendChild(qw)
-  setTimeout(()=>{try{new QRCode(qd,{text:card.id,width:110,height:110,colorDark:'#000',colorLight:'#fff'})}catch(e){}},50)
-  if(card.history?.length){
-    const hist=el('div','lc-hist');hist.innerHTML='<div class="hist-title">Stamp History</div>'
-    card.history.slice(0,5).forEach(h=>{const row=el('div','hist-row');row.innerHTML=`<span>${new Date(h.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</span><span>${h.type==='redeem'?'🎉 Free pint redeemed':'🍺 Pint stamped'}</span>`;hist.appendChild(row)})
-    div.appendChild(hist)
-  }
-  main.appendChild(div)
-  const back=el('button','btn-outline');back.textContent='← Back';back.style.marginTop='8px';back.onclick=()=>{G.wc.currentCard=null;render()};main.appendChild(back)
-}
-
-async function searchLoyaltyCard(){
-  if(!G.wc.searchName.trim())return
-  const{data}=await db.from('loyalty_cards').select('*').ilike('name','%'+G.wc.searchName.trim()+'%')
-  if(data?.length){G.wc.currentCard=data[0]}else{alert('No card found for "'+G.wc.searchName+'". Create one with + New Card.')}
-  render()
-}
-
-async function createLoyaltyCard(){
-  if(!G.wc.newName.trim()){alert('Please enter a name.');return}
-  const{data,error}=await db.from('loyalty_cards').insert({name:G.wc.newName.trim(),phone:G.wc.newPhone.trim()||null,pints:0,history:[],created_at:new Date().toISOString()}).select().single()
-  if(error){alert('Error: '+error.message);return}
-  G.wc.cards.unshift(data);G.wc.currentCard=data;G.wc.newName='';G.wc.newPhone='';G.modal=null;render()
-}
-
-async function stampCard(id){
-  const card=G.wc.cards.find(c=>c.id===id)||G.wc.scanResult?.card
-  if(!card)return
-  const np=card.pints+1
-  const nh=[{date:new Date().toISOString(),type:'stamp'},...(card.history||[])].slice(0,20)
-  const update={pints:np,history:nh,updated_at:new Date().toISOString()}
-  const{error}=await db.from('loyalty_cards').update(update).eq('id',id)
-  if(error){alert('Error: '+error.message);return}
-  const idx=G.wc.cards.findIndex(c=>c.id===id);if(idx>=0)G.wc.cards[idx]={...G.wc.cards[idx],...update}
-  if(G.wc.currentCard?.id===id)G.wc.currentCard={...G.wc.currentCard,...update}
-  if(G.wc.scanResult?.card?.id===id)G.wc.scanResult.card={...G.wc.scanResult.card,...update}
-  render()
-}
-
-async function redeemPint(id){
-  if(!confirm('Confirm free pint redeemed?'))return
-  const card=G.wc.cards.find(c=>c.id===id);if(!card)return
-  const nh=[{date:new Date().toISOString(),type:'redeem'},...(card.history||[])].slice(0,20)
-  const update={pints:0,history:nh,updated_at:new Date().toISOString()}
-  await db.from('loyalty_cards').update(update).eq('id',id)
-  const idx=G.wc.cards.findIndex(c=>c.id===id);if(idx>=0)G.wc.cards[idx]={...G.wc.cards[idx],...update}
-  if(G.wc.currentCard?.id===id)G.wc.currentCard={...G.wc.currentCard,...update}
-  G.wc.scanResult=null;G.wc.scanId='';render()
-}
-
-async function lookupLoyalty(id){
-  if(!id.trim())return
-  const{data}=await db.from('loyalty_cards').select('*').eq('id',id.trim()).single()
-  G.wc.scanResult=data?{found:true,card:data}:{found:false}
-  if(data){const idx=G.wc.cards.findIndex(c=>c.id===data.id);if(idx>=0)G.wc.cards[idx]=data;else G.wc.cards.unshift(data)}
-  render()
-}
-
-// QR Scanner
-let scanStream=null,scanFrame=null
-async function initScan(){
-  try{
-    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280}}})
-    const vid=document.getElementById('scanner-video');if(!vid){stopScan();return}
-    vid.srcObject=scanStream;vid.setAttribute('playsinline','true');await vid.play()
-    const canvas=document.createElement('canvas')
-    const tick=()=>{
-      if(!G.wc.scanning)return
-      if(vid.readyState===vid.HAVE_ENOUGH_DATA){
-        canvas.width=vid.videoWidth;canvas.height=vid.videoHeight
-        const ctx=canvas.getContext('2d');ctx.drawImage(vid,0,0,canvas.width,canvas.height)
-        const img=ctx.getImageData(0,0,canvas.width,canvas.height)
-        const code=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'})
-        if(code?.data){stopScan();lookupLoyalty(code.data.trim());return}
-      }
-      scanFrame=requestAnimationFrame(tick)
-    }
-    scanFrame=requestAnimationFrame(tick)
-  }catch(e){G.wc.scanErr=e.name==='NotAllowedError'?'Camera permission denied.':'Camera error: '+e.message;G.wc.scanning=false;render()}
-}
-
-function stopScan(){
-  if(scanFrame){cancelAnimationFrame(scanFrame);scanFrame=null}
-  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}
-  const vid=document.getElementById('scanner-video');if(vid)vid.srcObject=null
-  G.wc.scanning=false
-}
-
-// ============================================================
 // ============ RISK ASSESSMENT ============
 // ============================================================
 
@@ -2815,13 +2424,12 @@ function renderRisk(app){
 async function init(){
   G.status='connecting';render()
 
-  const[compRes,actualsRes,tempsRes,fireRes,trainRes,loyaltyRes,riskRes]=await Promise.all([
+  const[compRes,actualsRes,tempsRes,fireRes,trainRes,riskRes]=await Promise.all([
     db.from('compliance_checks').select('item_id,is_checked'),
     db.from('compliance_actuals').select('item_id,cost_type,actual_cost'),
     db.from('temperature_logs').select('*').eq('log_date',todayStr()).order('logged_at',{ascending:false}),
     db.from('fire_assessments').select('*').eq('id','chipshop-bxtn-378').single(),
     db.from('staff_training').select('*').eq('active',true).order('name'),
-    db.from('loyalty_cards').select('*').order('created_at',{ascending:false}),
     db.from('risk_hazards').select('*').eq('shop_id','chipshop-bxtn-378').order('area'),
   ])
 
@@ -2850,9 +2458,6 @@ async function init(){
     G.train.staff=trainRes.data.map(r=>({id:r.id,name:r.name,role:r.role,training:r.training||{},active:r.active}))
   }
 
-  // Loyalty
-  if(loyaltyRes.data)G.wc.cards=loyaltyRes.data
-
   // Risk Hazards
   if(riskRes.data&&riskRes.data.length){
     G.risk.hazards=riskRes.data.map(r=>({
@@ -2872,7 +2477,6 @@ async function init(){
   // Real-time subscriptions
   db.channel('hub-compliance').on('postgres_changes',{event:'*',schema:'public',table:'compliance_checks'},p=>{if(p.new)G.comp.checked[p.new.item_id]=p.new.is_checked;render()}).subscribe()
   db.channel('hub-temps').on('postgres_changes',{event:'INSERT',schema:'public',table:'temperature_logs'},p=>{const r=p.new;if(!G.temps.unitHist[r.unit_id])G.temps.unitHist[r.unit_id]=[];G.temps.unitHist[r.unit_id].unshift(r);render()}).subscribe()
-  db.channel('hub-loyalty').on('postgres_changes',{event:'*',schema:'public',table:'loyalty_cards'},async()=>{const{data}=await db.from('loyalty_cards').select('*').order('created_at',{ascending:false});if(data)G.wc.cards=data;render()}).subscribe()
   db.channel('hub-training').on('postgres_changes',{event:'*',schema:'public',table:'staff_training'},async()=>{const{data}=await db.from('staff_training').select('*').eq('active',true).order('name');if(data)G.train.staff=data.map(r=>({id:r.id,name:r.name,role:r.role,training:r.training||{},active:r.active}));render()}).subscribe()
   db.channel('hub-risk').on('postgres_changes',{event:'*',schema:'public',table:'risk_hazards'},async()=>{const{data}=await db.from('risk_hazards').select('*').eq('shop_id','chipshop-bxtn-378').order('area');if(data)G.risk.hazards=data.map(r=>({id:r.id,area:r.area,hazard:r.hazard,who:r.who||'',likelihood:r.likelihood,severity:r.severity,controls:r.controls||'',reviewer:r.reviewer||'',reviewDate:r.review_date||'',notes:r.notes||''}));render()}).subscribe()
 
