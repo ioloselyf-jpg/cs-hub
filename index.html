@@ -3845,11 +3845,17 @@ async function pnlCommitItems(){
   const{error}=await db.from('item_sales_import').insert(rec)
   if(error){alert('Import failed: '+error.message);return}
   P.preview.items=null
-  await pnlAutoCalcCogs()
   await pnlAutoCalcWastage()
   await pnlLoadPeriodData()
 }
 async function pnlAutoCalcCogs(){
+  // NOTE: this function is READ-ONLY. The database's pnl_summary view
+  // already computes theoretical COGS live from item_sales_import ×
+  // recipe_ingredients × ingredient_costs — it needs no cost_entries
+  // row at all. This function exists only to show coverage stats
+  // (how much of sold volume has a linked recipe). It must never
+  // insert into cost_entries for the 'cogs' group — doing so double-
+  // counts against the view's own calculation.
   const P=G.pnl
   if(!P.currentId)return{total:0,coveredQty:0,totalQty:0}
   const{data:sold}=await db.from('item_sales_import').select('item_name,quantity').eq('period_id',P.currentId)
@@ -3872,11 +3878,6 @@ async function pnlAutoCalcCogs(){
     total+=lineUnitCost*Number(s.quantity)
   })
   total=Math.round(total*100)/100
-  await db.from('cost_entries').delete().eq('period_id',P.currentId).eq('note','[AUTO] Recipe-costed COGS')
-  const liquorCat=P.costCats.find(c=>/liquor cogs/i.test(c.name))
-  if(liquorCat&&total>0){
-    await db.from('cost_entries').insert({period_id:P.currentId,category_id:liquorCat.id,amount:total,note:'[AUTO] Recipe-costed COGS'})
-  }
   return{total,coveredQty,totalQty}
 }
 async function pnlAutoCalcWastage(){
@@ -4212,15 +4213,15 @@ function renderPnL(app){
 
   else if(P.tab==='costs'){
     const rc=el('div','mod-banner')
-    rc.textContent='Liquor COGS is calculated automatically from recipe-linked items whenever sales are imported. If you add or edit recipes after importing, hit Recalculate to refresh this week\'s figure.'
+    rc.textContent='Liquor COGS is calculated live from recipe-linked items and doesn\'t need adding here — it updates itself automatically as sales, recipes or ingredient prices change. This button just shows you the current coverage; it never changes the P&L figure.'
     body.appendChild(rc)
     const rcActs=el('div','mod-actions');rcActs.style.marginBottom='14px'
-    const rcBtn=el('button','mod-btn-out');rcBtn.textContent='Recalculate COGS from recipes'
+    const rcBtn=el('button','mod-btn-out');rcBtn.textContent='Check recipe coverage'
     rcBtn.onclick=async()=>{
-      rcBtn.textContent='Calculating…';rcBtn.disabled=true
+      rcBtn.textContent='Checking…';rcBtn.disabled=true
       const res=await pnlAutoCalcCogs()
-      await pnlLoadPeriodData()
-      alert(`Recipe-costed COGS: ${pnlMoney(res.total)}\n${res.coveredQty} of ${res.totalQty} beverage units sold had a recipe on file.`)
+      rcBtn.textContent='Check recipe coverage';rcBtn.disabled=false
+      alert(`Live recipe-costed COGS: ${pnlMoney(res.total)}\n${res.coveredQty} of ${res.totalQty} beverage units sold had a recipe on file.\n\nThis is already reflected in the P&L totals above — nothing to save.`)
     }
     rcActs.appendChild(rcBtn)
 
@@ -4240,7 +4241,7 @@ function renderPnL(app){
 
     const sh=el('div','mod-section-hdr');sh.textContent='Add cost entry';body.appendChild(sh)
     const form=el('div');const grid=el('div','mod-form-grid')
-    grid.appendChild(modField('Category',modSelect(P.draftCost.category_id,[['','Select…']].concat(P.costCats.map(c=>[c.id,`${c.name} (${c.group_type})`])),v=>P.draftCost.category_id=v)))
+    grid.appendChild(modField('Category',modSelect(P.draftCost.category_id,[['','Select…']].concat(P.costCats.filter(c=>!/liquor cogs/i.test(c.name)).map(c=>[c.id,`${c.name} (${c.group_type})`])),v=>P.draftCost.category_id=v)))
     grid.appendChild(modField('Amount £',modInput(P.draftCost.amount,v=>P.draftCost.amount=v,'0.00','number')))
     grid.appendChild(modField('Note',modInput(P.draftCost.note,v=>P.draftCost.note=v,'Optional')))
     form.appendChild(grid)
@@ -4259,7 +4260,7 @@ function renderPnL(app){
 
     const sh3=el('div','mod-section-hdr');sh3.textContent='Fixed costs (auto-carried into every new week)';body.appendChild(sh3)
     const form2=el('div');const grid2=el('div','mod-form-grid')
-    grid2.appendChild(modField('Category',modSelect(P.draftFixed.category_id,[['','Select…']].concat(P.costCats.map(c=>[c.id,c.name])),v=>P.draftFixed.category_id=v)))
+    grid2.appendChild(modField('Category',modSelect(P.draftFixed.category_id,[['','Select…']].concat(P.costCats.filter(c=>!/liquor cogs/i.test(c.name)).map(c=>[c.id,c.name])),v=>P.draftFixed.category_id=v)))
     grid2.appendChild(modField('Weekly amount £',modInput(P.draftFixed.amount,v=>P.draftFixed.amount=v,'0.00','number')))
     grid2.appendChild(modField('Note',modInput(P.draftFixed.note,v=>P.draftFixed.note=v,'Optional')))
     form2.appendChild(grid2)
