@@ -590,7 +590,7 @@ let G={
   // Power test draft (persists across tab switches)
   powerDraft:{applianceId:'',before:'',after:'',duration:'',status:''},
   // Allergens
-  allergen:{tab:'menu',items:[],loading:false,loaded:false,editId:null,draft:null,filterAllergen:'all',search:''},
+  allergen:{tab:'menu',items:[],loading:false,loaded:false,editId:null,draft:null,filterAllergen:'all',search:'',recipeLookup:null,recipeLookupLoading:false},
   // Delivery
   delivery:{tab:'new',items:[],loading:false,loaded:false,draft:{supplier:'',received_by:'',temp_chilled:'',batch_numbers:'',notes:'',photo_url:'',is_chilled:true,delivery_date:new Date().toISOString().split('T')[0]},saving:false,saved:false},
   // Incident
@@ -610,7 +610,7 @@ let G={
   // Suppliers
   suppliers:{tab:'list',items:[],loading:false,loaded:false,draft:{name:'',category:'food',contact_name:'',phone:'',email:'',account_number:'',payment_terms:'',delivery_days:'',notes:''},saving:false,editId:null,search:''},
   // Pest Log
-  pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:new Date().toISOString().split('T')[0],reporter:'',severity:'medium',notes:'',action:''},filter:'all'},
+  pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:new Date().toISOString().split('T')[0],reporter:'',severity:'medium',notes:'',action:''},filter:'all',loaded:false,loading:false,items:[],saving:false},
   // P&L
   pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},preview:{items:null,wages:null,ingredients:null}},
 }
@@ -2115,6 +2115,7 @@ async function init(){
   db.channel('hub-temps').on('postgres_changes',{event:'INSERT',schema:'public',table:'temperature_logs'},p=>{const r=p.new;if(!G.temps.unitHist[r.unit_id])G.temps.unitHist[r.unit_id]=[];G.temps.unitHist[r.unit_id].unshift(r);render()}).subscribe()
   db.channel('hub-training').on('postgres_changes',{event:'*',schema:'public',table:'staff_training'},async()=>{const{data}=await db.from('staff_training').select('*').eq('active',true).order('name');if(data)G.train.staff=data.map(r=>({id:r.id,name:r.name,role:r.role,training:r.training||{},active:r.active}));render()}).subscribe()
   db.channel('hub-risk').on('postgres_changes',{event:'*',schema:'public',table:'risk_hazards'},async()=>{const{data}=await db.from('risk_hazards').select('*').eq('shop_id','chipshop-bxtn-378').order('area');if(data)G.risk.hazards=data.map(r=>({id:r.id,area:r.area,hazard:r.hazard,who:r.who||'',likelihood:r.likelihood,severity:r.severity,controls:r.controls||'',reviewer:r.reviewer||'',reviewDate:r.review_date||'',notes:r.notes||''}));render()}).subscribe()
+  db.channel('hub-pest').on('postgres_changes',{event:'*',schema:'public',table:'pest_logs'},async()=>{const{data}=await db.from('pest_logs').select('*').order('log_date',{ascending:false}).order('created_at',{ascending:false});if(data){G.pest.items=data;G.pest.loaded=true;render()}}).subscribe()
 
   setInterval(()=>render(),60000)
   render()
@@ -2741,7 +2742,7 @@ function renderAllergens(app){
     {value:A.items.filter(i=>i.allergens&&i.allergens.length).length,label:'With Allergens'},
     {value:A.items.filter(i=>!i.last_reviewed||(daysUntil(i.last_reviewed)<-180)).length,label:'Need Review',color:'#fb0000'},
   ]))
-  app.appendChild(modTabs([{id:'menu',label:'Menu Items'},{id:'add',label:A.editId?'Edit Item':'Add Item'}],A.tab,t=>{A.tab=t;if(t==='add'&&!A.draft)A.draft={item_name:'',category:'food',description:'',allergens:[],ingredients:'',last_reviewed:todayStr()};render()}))
+  app.appendChild(modTabs([{id:'menu',label:'Menu Items'},{id:'add',label:A.editId?'Edit Item':'Add Item'}],A.tab,t=>{A.tab=t;A.recipeLookup=null;if(t==='add'&&!A.draft)A.draft={item_name:'',category:'food',description:'',allergens:[],ingredients:'',last_reviewed:todayStr()};render()}))
 
   const body=el('div','mod-body')
   if(A.tab==='menu'){
@@ -2765,7 +2766,7 @@ function renderAllergens(app){
         <div class="mod-card-body">${it.description||''}</div>
         <div class="mod-card-meta">${allergens.length?allergens.map(a=>`<span class="mod-pill red">${a}</span>`).join(''):'<span class="mod-pill green">No allergens</span>'}</div>
         ${it.ingredients?`<div class="mod-card-body" style="font-size:0.7rem;color:#666;margin-top:8px"><strong style="color:#888">Ingredients:</strong> ${it.ingredients}</div>`:''}`
-      card.onclick=()=>{A.editId=it.id;A.draft={...it,allergens:it.allergens||[]};A.tab='add';render()}
+      card.onclick=()=>{A.editId=it.id;A.draft={...it,allergens:it.allergens||[]};A.tab='add';A.recipeLookup=null;render()}
       body.appendChild(card)
     })
   }else{
@@ -2776,8 +2777,35 @@ function renderAllergens(app){
     grid.appendChild(modField('Category',modSelect(d.category,[['food','Food'],['drink','Drink'],['side','Side'],['sauce','Sauce/Dip'],['dessert','Dessert']],v=>d.category=v)))
     grid.appendChild(modField('Last reviewed',modInput(d.last_reviewed,v=>d.last_reviewed=v,'','date')))
     grid.appendChild(modField('Description',modTextarea(d.description,v=>d.description=v,'Brief description')))
-    grid.appendChild(modField('Ingredients (comma separated)',modTextarea(d.ingredients,v=>d.ingredients=v,'cod, batter, salt, vegetable oil…'),true))
     form.appendChild(grid)
+
+    const lk=el('div','mod-banner')
+    lk.style.marginTop='4px'
+    if(!A.recipeLookup&&!A.recipeLookupLoading){
+      lk.textContent='If this item already has a costed recipe in the P&L module, you can pull its ingredient list in here instead of retyping it.'
+      const lkBtn=el('button','mod-btn-out');lkBtn.style.marginTop='8px';lkBtn.textContent='Check P&L for a linked recipe'
+      lkBtn.onclick=async()=>{
+        if(!d.item_name.trim()){alert('Enter an item name first');return}
+        A.recipeLookupLoading=true;render()
+        const{data}=await db.from('recipe_ingredients').select('quantity_ml,ingredient_costs(ingredient_name)').eq('item_name',d.item_name.trim())
+        A.recipeLookup=data||[]
+        A.recipeLookupLoading=false;render()
+      }
+      lk.appendChild(document.createElement('br'));lk.appendChild(lkBtn)
+    }else if(A.recipeLookupLoading){
+      lk.textContent='Checking…'
+    }else if(A.recipeLookup.length===0){
+      lk.textContent=`No P&L recipe found for "${d.item_name}" — nothing to pull in. You can still fill in ingredients manually below.`
+    }else{
+      const names=A.recipeLookup.map(r=>r.ingredient_costs?.ingredient_name).filter(Boolean)
+      lk.innerHTML=`<div>P&L has a costed recipe for this item:</div><div style="margin:6px 0;color:#ccc">${names.join(', ')}</div>`
+      const useBtn=el('button','mod-btn-out');useBtn.textContent='Use this as the ingredients list'
+      useBtn.onclick=()=>{d.ingredients=names.join(', ');A.recipeLookup=null;render()}
+      lk.appendChild(useBtn)
+    }
+    form.appendChild(lk)
+
+    form.appendChild(modField('Ingredients (comma separated)',modTextarea(d.ingredients,v=>d.ingredients=v,'cod, batter, salt, vegetable oil…'),true))
 
     const ah=el('div','mod-section-hdr');ah.textContent='Contains the following allergens'
     form.appendChild(ah)
@@ -2806,7 +2834,7 @@ function renderAllergens(app){
       }catch(e){alert('Error: '+e.message)}
     }
     const cancel=el('button','mod-btn mod-btn-out');cancel.textContent='Cancel'
-    cancel.onclick=()=>{A.editId=null;A.draft=null;A.tab='menu';render()}
+    cancel.onclick=()=>{A.editId=null;A.draft=null;A.tab='menu';A.recipeLookup=null;render()}
     acts.appendChild(save);acts.appendChild(cancel)
     if(A.editId){
       const del=el('button','mod-btn mod-btn-out');del.textContent='Delete';del.style.color='#fb0000';del.style.borderColor='#fb0000'
@@ -3490,20 +3518,37 @@ function renderSuppliers(app){
 const PEST_ICONS_MAP={'Mouse':'🐭','Rat':'🐀','Cockroach':'🪳','Fly Infestation':'🪰','Ants':'🐜','Other':'❓'}
 const PEST_STORAGE_KEY='csbxtn_pest_log_v1'
 
-function pestLoadLogs(){try{return JSON.parse(localStorage.getItem(PEST_STORAGE_KEY))||[]}catch{return[]}}
-function pestSaveLogs(logs){localStorage.setItem(PEST_STORAGE_KEY,JSON.stringify(logs))}
+const PEST_MIGRATED_KEY='csbxtn_pest_log_migrated_v1'
+async function pestMigrateLocalIfNeeded(){
+  if(localStorage.getItem(PEST_MIGRATED_KEY))return
+  let local=[]
+  try{local=JSON.parse(localStorage.getItem(PEST_STORAGE_KEY))||[]}catch{}
+  if(!local.length){localStorage.setItem(PEST_MIGRATED_KEY,'1');return}
+  const rows=local.map(l=>({pest:l.pest,location:l.location,log_date:l.date,reporter:l.reporter,severity:l.severity,notes:l.notes||null,action:l.action||null}))
+  const{error}=await db.from('pest_logs').insert(rows)
+  if(!error)localStorage.setItem(PEST_MIGRATED_KEY,'1')
+}
+async function loadPestLogs(){
+  const P=G.pest
+  P.loading=true;render()
+  await pestMigrateLocalIfNeeded()
+  const{data}=await db.from('pest_logs').select('*').order('log_date',{ascending:false}).order('created_at',{ascending:false})
+  P.items=data||[]
+  P.loaded=true;P.loading=false;render()
+}
 
 function renderPestLog(app){
   const P=G.pest
-  const logs=pestLoadLogs()
+  if(!P.loaded&&!P.loading) loadPestLogs()
+  const logs=P.items
 
   // Stats
   const now=new Date()
   const monthStart=new Date(now.getFullYear(),now.getMonth(),1)
   const day30=new Date(now-30*86400000)
-  const thisMonth=logs.filter(l=>new Date(l.date)>=monthStart)
-  const mice30=logs.filter(l=>new Date(l.date)>=day30&&(l.pest==='Mouse'||l.pest==='Rat'))
-  const roach30=logs.filter(l=>new Date(l.date)>=day30&&l.pest==='Cockroach')
+  const thisMonth=logs.filter(l=>new Date(l.log_date)>=monthStart)
+  const mice30=logs.filter(l=>new Date(l.log_date)>=day30&&(l.pest==='Mouse'||l.pest==='Rat'))
+  const roach30=logs.filter(l=>new Date(l.log_date)>=day30&&l.pest==='Cockroach')
   const rodentThisMonth=thisMonth.filter(l=>l.pest==='Mouse'||l.pest==='Rat').length
 
   // Hero
@@ -3602,14 +3647,15 @@ function renderPestLog(app){
     form.appendChild(lAct);form.appendChild(iAct)
 
     const submitBtn=el('button','btn-red');submitBtn.style.width='100%';submitBtn.style.marginTop='14px'
-    submitBtn.textContent='→ LOG INCIDENT'
-    submitBtn.onclick=()=>{
+    submitBtn.textContent=P.saving?'SAVING…':'→ LOG INCIDENT';submitBtn.disabled=P.saving
+    submitBtn.onclick=async()=>{
       if(!d.date||!d.reporter.trim()){alert('Date and reporter name required');return}
-      const logs=pestLoadLogs()
-      logs.unshift({id:Date.now(),pest:d.pest,location:d.location,date:d.date,reporter:d.reporter,severity:d.severity,notes:d.notes,action:d.action})
-      pestSaveLogs(logs)
+      P.saving=true;render()
+      const{error}=await db.from('pest_logs').insert({pest:d.pest,location:d.location,log_date:d.date,reporter:d.reporter.trim(),severity:d.severity,notes:d.notes||null,action:d.action||null})
+      P.saving=false
+      if(error){alert('Error: '+error.message);render();return}
       P.draft={pest:'Mouse',location:'Kitchen',date:new Date().toISOString().split('T')[0],reporter:'',severity:'medium',notes:'',action:''}
-      P.tab='history';render()
+      P.tab='history';P.loaded=false;await loadPestLogs()
     }
     form.appendChild(submitBtn)
     wrap.appendChild(form)
@@ -3625,9 +3671,8 @@ function renderPestLog(app){
     })
     const expBtn=el('button','hist-export-btn');expBtn.textContent='↓ Export CSV'
     expBtn.onclick=()=>{
-      const logs=pestLoadLogs()
-      if(!logs.length){alert('No logs to export');return}
-      const rows=logs.map(l=>[l.date,l.pest,l.location,l.severity,l.reporter,'"'+(l.notes||'').replace(/"/g,'""')+'"','"'+(l.action||'').replace(/"/g,'""')+'"'].join(','))
+      if(!P.items.length){alert('No logs to export');return}
+      const rows=P.items.map(l=>[l.log_date,l.pest,l.location,l.severity,l.reporter,'"'+(l.notes||'').replace(/"/g,'""')+'"','"'+(l.action||'').replace(/"/g,'""')+'"'].join(','))
       const csv=['Date,Pest,Location,Severity,Reporter,Notes,Action',...rows].join('\n')
       const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}))
       a.download='pest-log-chipshopbxtn-'+new Date().toISOString().split('T')[0]+'.csv';a.click()
@@ -3635,7 +3680,8 @@ function renderPestLog(app){
     filterBar.appendChild(expBtn)
     wrap.appendChild(filterBar)
 
-    const filtered=P.filter==='all'?pestLoadLogs():pestLoadLogs().filter(l=>l.pest===P.filter)
+    if(P.loading){const e=el('div','empty-state');e.textContent='Loading…';wrap.appendChild(e);app.appendChild(wrap);return}
+    const filtered=P.filter==='all'?P.items:P.items.filter(l=>l.pest===P.filter)
     if(!filtered.length){
       const e=el('div','empty-state');e.textContent='No incidents logged';wrap.appendChild(e)
     }else{
@@ -3643,7 +3689,7 @@ function renderPestLog(app){
       filtered.forEach(entry=>{
         const card=el('div','pest-entry')
         const icon=PEST_ICONS_MAP[entry.pest]||'❓'
-        const dateStr=entry.date?new Date(entry.date+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—'
+        const dateStr=entry.log_date?new Date(entry.log_date+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—'
         const sevColors={low:'#4caf50',medium:'#ff9800',high:'#fb5000',critical:'#fb0000'}
         const sevColor=sevColors[entry.severity]||'#fb0000'
         card.innerHTML=`<div class="pest-entry-icon">${icon}</div>
@@ -3661,7 +3707,11 @@ function renderPestLog(app){
         list.appendChild(card)
       })
       list.querySelectorAll('.pest-del-btn').forEach(btn=>{
-        btn.onclick=()=>{pestSaveLogs(pestLoadLogs().filter(l=>l.id!==parseInt(btn.dataset.id)));render()}
+        btn.onclick=async()=>{
+          if(!confirm('Delete this pest log entry?'))return
+          await db.from('pest_logs').delete().eq('id',btn.dataset.id)
+          P.loaded=false;await loadPestLogs()
+        }
       })
       wrap.appendChild(list)
     }
@@ -3796,6 +3846,7 @@ async function pnlCommitItems(){
   if(error){alert('Import failed: '+error.message);return}
   P.preview.items=null
   await pnlAutoCalcCogs()
+  await pnlAutoCalcWastage()
   await pnlLoadPeriodData()
 }
 async function pnlAutoCalcCogs(){
@@ -3827,6 +3878,19 @@ async function pnlAutoCalcCogs(){
     await db.from('cost_entries').insert({period_id:P.currentId,category_id:liquorCat.id,amount:total,note:'[AUTO] Recipe-costed COGS'})
   }
   return{total,coveredQty,totalQty}
+}
+async function pnlAutoCalcWastage(){
+  const P=G.pnl
+  if(!P.currentId||!P.current)return{total:0,count:0}
+  const{data:rows}=await db.from('wastage_log').select('cost').gte('waste_date',P.current.start_date).lte('waste_date',P.current.end_date)
+  const valid=(rows||[]).filter(r=>r.cost!==null&&r.cost!==undefined)
+  const total=Math.round(valid.reduce((s,r)=>s+(parseFloat(r.cost)||0),0)*100)/100
+  await db.from('cost_entries').delete().eq('period_id',P.currentId).eq('note','[AUTO] Wastage')
+  const wasteCat=P.costCats.find(c=>c.name==='Wastage')
+  if(wasteCat&&total>0){
+    await db.from('cost_entries').insert({period_id:P.currentId,category_id:wasteCat.id,amount:total,note:'[AUTO] Wastage'})
+  }
+  return{total,count:valid.length}
 }
 async function pnlImportWages(file){
   const P=G.pnl
@@ -4158,7 +4222,21 @@ function renderPnL(app){
       await pnlLoadPeriodData()
       alert(`Recipe-costed COGS: ${pnlMoney(res.total)}\n${res.coveredQty} of ${res.totalQty} beverage units sold had a recipe on file.`)
     }
-    rcActs.appendChild(rcBtn);body.appendChild(rcActs)
+    rcActs.appendChild(rcBtn)
+
+    const wc=el('div','mod-banner')
+    wc.style.marginTop='10px'
+    wc.textContent='Wastage cost is pulled in automatically from the Stock & Wastage log for this week\'s date range. Hit Recalculate if you\'ve logged wastage since sales were last imported.'
+    body.appendChild(rcActs);body.appendChild(wc)
+    const wcActs=el('div','mod-actions');wcActs.style.marginBottom='14px'
+    const wcBtn=el('button','mod-btn-out');wcBtn.textContent='Recalculate wastage'
+    wcBtn.onclick=async()=>{
+      wcBtn.textContent='Calculating…';wcBtn.disabled=true
+      const res=await pnlAutoCalcWastage()
+      await pnlLoadPeriodData()
+      alert(`Wastage this week: ${pnlMoney(res.total)}\nfrom ${res.count} logged entr${res.count===1?'y':'ies'}.`)
+    }
+    wcActs.appendChild(wcBtn);body.appendChild(wcActs)
 
     const sh=el('div','mod-section-hdr');sh.textContent='Add cost entry';body.appendChild(sh)
     const form=el('div');const grid=el('div','mod-form-grid')
