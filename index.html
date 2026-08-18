@@ -612,7 +612,7 @@ let G={
   // Pest Log
   pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:new Date().toISOString().split('T')[0],reporter:'',severity:'medium',notes:'',action:''},filter:'all',loaded:false,loading:false,items:[],saving:false},
   // P&L
-  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},preview:{items:null,wages:null,ingredients:null}},
+  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},stockLoaded:false,stockLoading:false,stockIngredients:[],stockCounts:{},stockPrevCounts:{},stockSearch:'',stockSaving:false,realCogs:null,preview:{items:null,wages:null,ingredients:null}},
 }
 
 // ============================================================
@@ -3893,6 +3893,46 @@ async function pnlAutoCalcWastage(){
   }
   return{total,count:valid.length}
 }
+async function pnlLoadStock(){
+  const P=G.pnl
+  if(!P.currentId||!P.current)return
+  P.stockLoading=true;render()
+  const{data:ings}=await db.from('ingredient_costs').select('id,ingredient_name,category,purchase_price,purchase_qty,purchase_unit').order('category').order('ingredient_name')
+  P.stockIngredients=ings||[]
+  const{data:mine}=await db.from('stock_counts').select('ingredient_id,quantity_units').eq('period_id',P.currentId)
+  P.stockCounts={}
+  ;(mine||[]).forEach(r=>{P.stockCounts[r.ingredient_id]=r.quantity_units})
+  const{data:prevPeriods}=await db.from('pnl_periods').select('id').lt('start_date',P.current.start_date).order('start_date',{ascending:false}).limit(1)
+  P.stockPrevCounts={}
+  P.stockPrevPeriodFound=!!(prevPeriods&&prevPeriods.length)
+  if(prevPeriods&&prevPeriods.length){
+    const{data:prev}=await db.from('stock_counts').select('ingredient_id,quantity_units').eq('period_id',prevPeriods[0].id)
+    ;(prev||[]).forEach(r=>{P.stockPrevCounts[r.ingredient_id]=r.quantity_units})
+  }
+  P.stockLoaded=true;P.stockLoading=false;render()
+}
+async function pnlSaveStockCounts(){
+  const P=G.pnl
+  const rows=Object.entries(P.stockCounts).filter(([id,qty])=>qty!==''&&qty!==null&&qty!==undefined).map(([id,qty])=>({period_id:P.currentId,ingredient_id:id,quantity_units:parseFloat(qty)}))
+  if(!rows.length){alert('Enter at least one count before saving');return}
+  P.stockSaving=true;render()
+  const{error}=await db.from('stock_counts').upsert(rows,{onConflict:'period_id,ingredient_id'})
+  P.stockSaving=false
+  if(error){alert('Save failed: '+error.message);render();return}
+  P.realCogs=null
+  await pnlLoadStock()
+}
+function pnlCalcRealCogs(){
+  const P=G.pnl
+  const byId={}
+  P.stockIngredients.forEach(i=>byId[i.id]=i)
+  const openingValue=Object.entries(P.stockPrevCounts).reduce((s,[id,qty])=>{const ing=byId[id];return s+(ing?qty*ing.purchase_price:0)},0)
+  const closingValue=Object.entries(P.stockCounts).reduce((s,[id,qty])=>{const ing=byId[id];if(qty===''||qty===null||qty===undefined)return s;return s+(ing?qty*ing.purchase_price:0)},0)
+  const purchasesValue=(P.purchases||[]).reduce((s,p)=>s+Number(p.amount),0)
+  const realCogs=openingValue+purchasesValue-closingValue
+  P.realCogs={openingValue:Math.round(openingValue*100)/100,closingValue:Math.round(closingValue*100)/100,purchasesValue:Math.round(purchasesValue*100)/100,realCogs:Math.round(realCogs*100)/100}
+  render()
+}
 async function pnlImportWages(file){
   const P=G.pnl
   const text=await pnlReadFile(file)
@@ -4087,7 +4127,7 @@ function renderPnL(app){
     app.appendChild(checklist)
   }
 
-  app.appendChild(modTabs([{id:'dashboard',label:'Dashboard'},{id:'import',label:'Import'},{id:'purchases',label:'Purchases'},{id:'costs',label:'Costs'},{id:'recipes',label:'Recipes'}],P.tab,t=>{P.tab=t;render()}))
+  app.appendChild(modTabs([{id:'dashboard',label:'Dashboard'},{id:'import',label:'Import'},{id:'purchases',label:'Purchases'},{id:'costs',label:'Costs'},{id:'recipes',label:'Recipes'},{id:'stock',label:'Stocktake'}],P.tab,t=>{P.tab=t;render()}))
   const body=el('div','mod-body')
 
   if(!P.currentId){
@@ -4301,6 +4341,67 @@ function renderPnL(app){
         body.appendChild(card)
       })
     }
+  }
+
+  else if(P.tab==='stock'){
+    if(!P.stockLoaded&&!P.stockLoading) pnlLoadStock()
+    if(P.stockLoading){const e=el('div','mod-empty');e.textContent='Loading…';body.appendChild(e);app.appendChild(body);return}
+    if(!P.stockLoaded){app.appendChild(body);return}
+
+    const intro=el('div','mod-banner')
+    intro.textContent='Count what\'s actually on the shelf/in the cellar at the end of this week, in bottles/kegs/cases (e.g. 2.5 = two and a half bottles) — not millilitres. This becomes next week\'s opening stock automatically.'
+    body.appendChild(intro)
+
+    if(!P.stockPrevPeriodFound){
+      const w=el('div','mod-banner');w.style.borderColor='#ff9800';w.style.color='#ffb74d'
+      w.textContent='No earlier week has a stocktake on file, so opening stock for this week is unknown — Real COGS can\'t be calculated yet. Once you count this week, next week\'s Real COGS will work properly.'
+      body.appendChild(w)
+    }
+
+    const rc=el('div','mod-card')
+    const rcBtn=el('button','mod-btn-out');rcBtn.textContent='Calculate Real COGS'
+    rcBtn.onclick=pnlCalcRealCogs
+    rc.appendChild(rcBtn)
+    if(P.realCogs){
+      const r=P.realCogs
+      const diff=P.summary?(r.realCogs-P.summary.cogs):null
+      rc.innerHTML+=`<div style="margin-top:12px;font-size:0.85rem;line-height:1.9">
+        Opening stock value: <b>${pnlMoney(r.openingValue)}</b><br>
+        + Purchases this week: <b>${pnlMoney(r.purchasesValue)}</b><br>
+        − Closing stock value: <b>${pnlMoney(r.closingValue)}</b><br>
+        <span style="font-size:1.1rem;color:#fb0000">= Real COGS: <b>${pnlMoney(r.realCogs)}</b></span><br>
+        ${P.summary?`<span style="color:#999">Theoretical (recipe-based) COGS: ${pnlMoney(P.summary.cogs)} — difference: ${diff>=0?'+':''}${pnlMoney(diff)}</span>`:''}
+      </div>`
+    }
+    body.appendChild(rc)
+
+    const searchWrap=el('div','mod-search-row')
+    searchWrap.appendChild(modInput(P.stockSearch,v=>{P.stockSearch=v;render()},'Search ingredients…'))
+    body.appendChild(searchWrap)
+
+    const saveActs=el('div','mod-actions');saveActs.style.margin='10px 0'
+    const saveBtn=el('button','mod-btn');saveBtn.textContent=P.stockSaving?'Saving…':'Save Count';saveBtn.disabled=P.stockSaving
+    saveBtn.onclick=pnlSaveStockCounts
+    saveActs.appendChild(saveBtn)
+    body.appendChild(saveActs)
+
+    const q=P.stockSearch.trim().toLowerCase()
+    const filtered=P.stockIngredients.filter(i=>!q||i.ingredient_name.toLowerCase().includes(q))
+    const grouped={}
+    filtered.forEach(i=>{(grouped[i.category||'Other']=grouped[i.category||'Other']||[]).push(i)})
+    if(!filtered.length){const e=el('div','mod-empty');e.textContent='No ingredients match';body.appendChild(e)}
+    Object.keys(grouped).sort().forEach(cat=>{
+      const sh=el('div','mod-section-hdr');sh.textContent=cat;body.appendChild(sh)
+      grouped[cat].forEach(ing=>{
+        const row=el('div','mod-card');row.style.display='flex';row.style.alignItems='center';row.style.justifyContent='space-between';row.style.gap='12px';row.style.padding='10px 16px'
+        const label=el('div')
+        label.innerHTML=`<div style="font-weight:700;font-size:0.85rem">${ing.ingredient_name}</div><div style="font-size:0.68rem;color:#777">1 unit = ${ing.purchase_qty}${ing.purchase_unit||'ml'} · £${Number(ing.purchase_price).toFixed(2)}/unit</div>`
+        const inp=modInput(P.stockCounts[ing.id]!==undefined?String(P.stockCounts[ing.id]):'',v=>{P.stockCounts[ing.id]=v},'0','number')
+        inp.style.width='90px'
+        row.appendChild(label);row.appendChild(inp)
+        body.appendChild(row)
+      })
+    })
   }
 
   app.appendChild(body)
