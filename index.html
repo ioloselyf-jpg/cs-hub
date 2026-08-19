@@ -3904,10 +3904,11 @@ async function pnlLoadStock(){
   ;(mine||[]).forEach(r=>{P.stockCounts[r.ingredient_id]=r.quantity_units})
   const{data:prevPeriods}=await db.from('pnl_periods').select('id').lt('start_date',P.current.start_date).order('start_date',{ascending:false}).limit(1)
   P.stockPrevCounts={}
-  P.stockPrevPeriodFound=!!(prevPeriods&&prevPeriods.length)
+  P.stockPrevPeriodFound=false
   if(prevPeriods&&prevPeriods.length){
     const{data:prev}=await db.from('stock_counts').select('ingredient_id,quantity_units').eq('period_id',prevPeriods[0].id)
     ;(prev||[]).forEach(r=>{P.stockPrevCounts[r.ingredient_id]=r.quantity_units})
+    P.stockPrevPeriodFound=!!(prev&&prev.length)
   }
   P.stockLoaded=true;P.stockLoading=false;render()
 }
