@@ -580,7 +580,7 @@ let G={
   // Compliance
   comp:{tab:'food',openSecs:{},checked:{},actuals:{},costOpen:true},
   // Temps
-  temps:{tab:'kitchen',session:'Opening',staffName:'',readings:{},actions:{},submitted:{},unitHist:{}},
+  temps:{tab:'kitchen',session:'Opening',staffName:'',readings:{},actions:{},submitted:{},unitHist:{},histFrom:'',histTo:'',histArea:'all',histLoaded:false,histLoading:false,histRows:[]},
   // Fire
   fire:{tab:'assess',openSecs:{premises:true},responses:{},premNotes:{},assessorName:'',assessorRole:'',assessorDate:new Date().toISOString().split('T')[0],reviewDate:'',files:{},scanning:false,scanErr:null,saving:false},
   // Training
@@ -1092,8 +1092,16 @@ function renderTemps(app){
     t.innerHTML=`${label}<span class="tab-ct">${d}/${items.length} logged</span>`
     t.onclick=()=>{T.tab=key;render()};tabs.appendChild(t)
   })
+  const histTab=el('button','tab'+(T.tab==='history'?' on':''));histTab.textContent='📜 History'
+  histTab.onclick=()=>{T.tab='history';render()};tabs.appendChild(histTab)
 
-  app.appendChild(sbar);app.appendChild(tabs)
+  app.appendChild(tabs)
+
+  if(T.tab==='history'){
+    tempsRenderHistory(app,T)
+    return
+  }
+  app.appendChild(sbar)
 
   const main=el('div','section-wrap')
   const grid=el('div','unit-grid')
@@ -1187,6 +1195,66 @@ function renderTemps(app){
   subbtn.disabled=filledCount===0||logged===units.length
   subbtn.onclick=()=>logAllTemps(units)
   subbar.appendChild(sum);subbar.appendChild(subbtn);app.appendChild(subbar)
+}
+
+function tempsRenderHistory(app,T){
+  if(!T.histFrom){
+    const to=new Date();const from=new Date(to-29*86400000)
+    T.histTo=to.toISOString().split('T')[0]
+    T.histFrom=from.toISOString().split('T')[0]
+  }
+  const wrap=el('div','section-wrap')
+
+  const filterRow=el('div','mod-form-grid')
+  filterRow.appendChild(modField('From',modInput(T.histFrom,v=>{T.histFrom=v;T.histLoaded=false;render()},'','date')))
+  filterRow.appendChild(modField('To',modInput(T.histTo,v=>{T.histTo=v;T.histLoaded=false;render()},'','date')))
+  filterRow.appendChild(modField('Area',modSelect(T.histArea,[['all','All'],['kitchen','Kitchen'],['bar','Bar']],v=>{T.histArea=v;render()})))
+  wrap.appendChild(filterRow)
+
+  if(!T.histLoaded&&!T.histLoading) tempsLoadHistory(T)
+  if(T.histLoading){const e=el('div','empty-state');e.textContent='Loading…';wrap.appendChild(e);app.appendChild(wrap);return}
+  if(!T.histLoaded){app.appendChild(wrap);return}
+
+  const rows=T.histArea==='all'?T.histRows:T.histRows.filter(r=>r.area===T.histArea)
+
+  // Build the list of expected dates in range, to show real gaps honestly
+  const dates=[]
+  const d0=new Date(T.histFrom+'T12:00:00'),d1=new Date(T.histTo+'T12:00:00')
+  for(let d=new Date(d1);d>=d0;d.setDate(d.getDate()-1))dates.push(d.toISOString().split('T')[0])
+
+  const byDate={}
+  rows.forEach(r=>{(byDate[r.log_date]=byDate[r.log_date]||[]).push(r)})
+
+  const loggedDays=dates.filter(d=>byDate[d]&&byDate[d].length).length
+  const summary=el('div','mod-banner')
+  summary.textContent=`${loggedDays} of ${dates.length} days in this range have at least one reading logged.`
+  wrap.appendChild(summary)
+
+  dates.forEach(date=>{
+    const dayRows=byDate[date]
+    const dh=el('div','mod-section-hdr')
+    const niceDate=new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})
+    dh.textContent=dayRows?`${niceDate} — ${dayRows.length} reading${dayRows.length===1?'':'s'}`:`${niceDate} — no readings logged`
+    if(!dayRows)dh.style.color='#666'
+    wrap.appendChild(dh)
+    if(!dayRows)return
+    dayRows.sort((a,b)=>a.unit_name.localeCompare(b.unit_name)).forEach(r=>{
+      const unit=UNITS.find(u=>u.id===r.unit_id)
+      const status=unit?getTempStatus(unit,r.temperature):'ok'
+      const card=el('div','mod-card');card.style.padding='10px 16px';card.style.display='flex';card.style.justifyContent='space-between';card.style.alignItems='center'
+      card.innerHTML=`<div><div style="font-weight:700;font-size:0.85rem">${r.unit_name} <span style="color:#666;font-weight:400">— ${r.session}</span></div>
+        <div style="font-size:0.7rem;color:#777">${r.staff_name||'—'}${r.corrective_action?' · '+r.corrective_action:''}</div></div>
+        <div style="font-weight:800;font-size:1.1rem;color:${status==='danger'?'#fb0000':status==='warn'?'#ff9800':'#4caf50'}">${r.temperature}°C</div>`
+      wrap.appendChild(card)
+    })
+  })
+  app.appendChild(wrap)
+}
+async function tempsLoadHistory(T){
+  T.histLoading=true;render()
+  const{data}=await db.from('temperature_logs').select('*').gte('log_date',T.histFrom).lte('log_date',T.histTo).order('log_date',{ascending:false})
+  T.histRows=data||[]
+  T.histLoaded=true;T.histLoading=false;render()
 }
 
 async function logSingleTemp(unit){
