@@ -582,7 +582,7 @@ let G={
   // Temps
   temps:{tab:'kitchen',session:'Opening',staffName:'',readings:{},actions:{},submitted:{},unitHist:{},histFrom:'',histTo:'',histArea:'all',histLoaded:false,histLoading:false,histRows:[]},
   // Fire
-  fire:{tab:'assess',openSecs:{premises:true},responses:{},premNotes:{},assessorName:'',assessorRole:'',assessorDate:new Date().toISOString().split('T')[0],reviewDate:'',files:{},scanning:false,scanErr:null,saving:false},
+  fire:{tab:'assess',openSecs:{premises:true},responses:{},premNotes:{},assessorName:'',assessorRole:'',assessorDate:todayStr(),reviewDate:'',files:{},scanning:false,scanErr:null,saving:false},
   // Training
   train:{tab:'staff',staff:[],openCards:{},editData:{},filterText:''},
   // Premises Checks
@@ -592,25 +592,25 @@ let G={
   // Allergens
   allergen:{tab:'menu',items:[],loading:false,loaded:false,editId:null,draft:null,filterAllergen:'all',search:'',recipeLookup:null,recipeLookupLoading:false},
   // Delivery
-  delivery:{tab:'new',items:[],loading:false,loaded:false,draft:{supplier:'',received_by:'',temp_chilled:'',batch_numbers:'',notes:'',photo_url:'',is_chilled:true,delivery_date:new Date().toISOString().split('T')[0]},saving:false,saved:false},
+  delivery:{tab:'new',items:[],loading:false,loaded:false,draft:{supplier:'',received_by:'',temp_chilled:'',batch_numbers:'',notes:'',photo_url:'',is_chilled:true,delivery_date:todayStr()},saving:false,saved:false},
   // Incident
-  incident:{tab:'new',items:[],loading:false,loaded:false,draft:{incident_type:'slip',incident_date:new Date().toISOString().split('T')[0],incident_time:new Date().toTimeString().slice(0,5),location:'',description:'',action_taken:'',riddor:false,witness_name:'',witness_contact:'',injured_name:'',injured_role:'',signed_by:'',photo_url:''},saving:false,saved:false,filterType:'all'},
+  incident:{tab:'new',items:[],loading:false,loaded:false,draft:{incident_type:'slip',incident_date:todayStr(),incident_time:new Date().toTimeString().slice(0,5),location:'',description:'',action_taken:'',riddor:false,witness_name:'',witness_contact:'',injured_name:'',injured_role:'',signed_by:'',photo_url:''},saving:false,saved:false,filterType:'all'},
   // Cleaning
   cleaning:{tab:'today',tasks:[],loading:false,loaded:false,signedBy:'',completing:{}},
   // Stock & Wastage
-  stock:{tab:'new',items:[],loading:false,loaded:false,draft:{item:'',category:'food',quantity:'',unit:'kg',cost:'',reason:'spoilage',notes:'',signed_by:'',waste_date:new Date().toISOString().split('T')[0]},saving:false,filterCat:'all',filterPeriod:'7'},
+  stock:{tab:'new',items:[],loading:false,loaded:false,draft:{item:'',category:'food',quantity:'',unit:'kg',cost:'',reason:'spoilage',notes:'',signed_by:'',waste_date:todayStr()},saving:false,filterCat:'all',filterPeriod:'7'},
   // Maintenance
   maint:{tab:'open',items:[],loading:false,loaded:false,draft:{title:'',category:'kitchen',priority:'medium',description:'',contractor:'',cost:'',status:'reported',due_date:'',resolved_date:'',reported_by:'',photo_url:''},saving:false,editId:null,filterStatus:'all'},
   // Cash-up
-  cash:{tab:'new',items:[],loading:false,loaded:false,draft:{shift_date:new Date().toISOString().split('T')[0],shift:'closing',cash_total:'',card_total:'',void_total:'',void_reasons:'',float_start:'',float_end:'',variance:'',notes:'',signed_by:''},saving:false},
+  cash:{tab:'new',items:[],loading:false,loaded:false,draft:{shift_date:todayStr(),shift:'closing',cash_total:'',card_total:'',void_total:'',void_reasons:'',float_start:'',float_end:'',variance:'',notes:'',signed_by:''},saving:false},
   // Visitor
   visitor:{tab:'today',items:[],loading:false,loaded:false,draft:{visitor_name:'',company:'',purpose:'contractor',signed_in_by:'',contact_number:'',signed_in_at:new Date().toISOString(),signed_out_at:''},saving:false},
   // Handover
-  handover:{tab:'today',items:[],loading:false,loaded:false,draft:{handover_date:new Date().toISOString().split('T')[0],from_shift:'opening',from_name:'',issues:'',vips:'',deliveries_pending:'',followups:'',sales_target_notes:''},saving:false,saved:false},
+  handover:{tab:'today',items:[],loading:false,loaded:false,draft:{handover_date:todayStr(),from_shift:'opening',from_name:'',issues:'',vips:'',deliveries_pending:'',followups:'',sales_target_notes:''},saving:false,saved:false},
   // Suppliers
   suppliers:{tab:'list',items:[],loading:false,loaded:false,draft:{name:'',category:'food',contact_name:'',phone:'',email:'',account_number:'',payment_terms:'',delivery_days:'',notes:''},saving:false,editId:null,search:''},
   // Pest Log
-  pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:new Date().toISOString().split('T')[0],reporter:'',severity:'medium',notes:'',action:''},filter:'all',loaded:false,loading:false,items:[],saving:false},
+  pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:todayStr(),reporter:'',severity:'medium',notes:'',action:''},filter:'all',loaded:false,loading:false,items:[],saving:false},
   // P&L
   pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},stockLoaded:false,stockLoading:false,stockIngredients:[],stockCounts:{},stockPrevCounts:{},stockSearch:'',stockSaving:false,realCogs:null,preview:{items:null,wages:null,ingredients:null}},
 }
@@ -621,9 +621,10 @@ let G={
 function el(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e}
 function fmt(n){return n===0?'Free':'£'+n.toLocaleString()}
 function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
-function todayStr(){return new Date().toISOString().split('T')[0]}
+function localDateStr(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`}
+function todayStr(){return localDateStr(new Date())}
 function daysUntil(d){if(!d)return null;return Math.round((new Date(d)-new Date())/(86400000))}
-function calcExpiry(date,yrs){if(!date||!yrs)return'';const d=new Date(date);d.setFullYear(d.getFullYear()+yrs);return d.toISOString().split('T')[0]}
+function calcExpiry(date,yrs){if(!date||!yrs)return'';const d=new Date(date);d.setFullYear(d.getFullYear()+yrs);return localDateStr(d)}
 
 // ============================================================
 // DASHBOARD CARDS
@@ -1200,8 +1201,8 @@ function renderTemps(app){
 function tempsRenderHistory(app,T){
   if(!T.histFrom){
     const to=new Date();const from=new Date(to-29*86400000)
-    T.histTo=to.toISOString().split('T')[0]
-    T.histFrom=from.toISOString().split('T')[0]
+    T.histTo=localDateStr(to)
+    T.histFrom=localDateStr(from)
   }
   const wrap=el('div','section-wrap')
 
@@ -1220,7 +1221,7 @@ function tempsRenderHistory(app,T){
   // Build the list of expected dates in range, to show real gaps honestly
   const dates=[]
   const d0=new Date(T.histFrom+'T12:00:00'),d1=new Date(T.histTo+'T12:00:00')
-  for(let d=new Date(d1);d>=d0;d.setDate(d.getDate()-1))dates.push(d.toISOString().split('T')[0])
+  for(let d=new Date(d1);d>=d0;d.setDate(d.getDate()-1))dates.push(localDateStr(d))
 
   const byDate={}
   rows.forEach(r=>{(byDate[r.log_date]=byDate[r.log_date]||[]).push(r)})
@@ -3722,7 +3723,7 @@ function renderPestLog(app){
       const{error}=await db.from('pest_logs').insert({pest:d.pest,location:d.location,log_date:d.date,reporter:d.reporter.trim(),severity:d.severity,notes:d.notes||null,action:d.action||null})
       P.saving=false
       if(error){alert('Error: '+error.message);render();return}
-      P.draft={pest:'Mouse',location:'Kitchen',date:new Date().toISOString().split('T')[0],reporter:'',severity:'medium',notes:'',action:''}
+      P.draft={pest:'Mouse',location:'Kitchen',date:todayStr(),reporter:'',severity:'medium',notes:'',action:''}
       P.tab='history';P.loaded=false;await loadPestLogs()
     }
     form.appendChild(submitBtn)
@@ -3743,7 +3744,7 @@ function renderPestLog(app){
       const rows=P.items.map(l=>[l.log_date,l.pest,l.location,l.severity,l.reporter,'"'+(l.notes||'').replace(/"/g,'""')+'"','"'+(l.action||'').replace(/"/g,'""')+'"'].join(','))
       const csv=['Date,Pest,Location,Severity,Reporter,Notes,Action',...rows].join('\n')
       const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}))
-      a.download='pest-log-chipshopbxtn-'+new Date().toISOString().split('T')[0]+'.csv';a.click()
+      a.download='pest-log-chipshopbxtn-'+todayStr()+'.csv';a.click()
     }
     filterBar.appendChild(expBtn)
     wrap.appendChild(filterBar)
@@ -3863,7 +3864,7 @@ async function pnlCreatePeriod(dateStr){
   const monday=pnlMonday(dateStr?new Date(dateStr+'T12:00:00'):new Date())
   const sunday=new Date(monday);sunday.setDate(sunday.getDate()+6)
   const label=pnlIsoWeek(monday)
-  const{data,error}=await db.from('pnl_periods').insert({week_label:label,start_date:monday.toISOString().slice(0,10),end_date:sunday.toISOString().slice(0,10),status:'draft'}).select().single()
+  const{data,error}=await db.from('pnl_periods').insert({week_label:label,start_date:localDateStr(monday),end_date:localDateStr(sunday),status:'draft'}).select().single()
   if(error){alert(error.message.includes('duplicate')?`A week already exists covering ${monday.toLocaleDateString('en-GB')}–${sunday.toLocaleDateString('en-GB')}. Select it from the dropdown instead.`:'Could not create week: '+error.message);return}
   if(G.pnl.fixedCosts.length){
     const rows=G.pnl.fixedCosts.map(f=>({period_id:data.id,category_id:f.category_id,amount:f.weekly_amount,note:f.note||'(fixed, auto-carried)'}))
@@ -3878,7 +3879,7 @@ async function pnlEditPeriodDate(dateStr){
   const monday=pnlMonday(new Date(dateStr+'T12:00:00'))
   const sunday=new Date(monday);sunday.setDate(sunday.getDate()+6)
   const label=pnlIsoWeek(monday)
-  const{error}=await db.from('pnl_periods').update({week_label:label,start_date:monday.toISOString().slice(0,10),end_date:sunday.toISOString().slice(0,10)}).eq('id',P.current.id)
+  const{error}=await db.from('pnl_periods').update({week_label:label,start_date:localDateStr(monday),end_date:localDateStr(sunday)}).eq('id',P.current.id)
   if(error){alert(error.message.includes('duplicate')?`A week already exists covering ${monday.toLocaleDateString('en-GB')}\u2013${sunday.toLocaleDateString('en-GB')}. Pick a different date, or edit that week directly from the dropdown.`:'Could not update week: '+error.message);return}
   P.showEditDateForm=false
   await pnlLoadPeriods();await pnlLoadPeriodData()
@@ -4110,7 +4111,7 @@ function renderPnL(app){
   newBtn.onclick=()=>{
     if(!P.newPeriodDate){
       const lastMon=pnlMonday(new Date());lastMon.setDate(lastMon.getDate()-7)
-      P.newPeriodDate=lastMon.toISOString().slice(0,10)
+      P.newPeriodDate=localDateStr(lastMon)
     }
     P.showNewPeriodForm=!P.showNewPeriodForm;P.showEditDateForm=false;render()
   }
@@ -4271,7 +4272,7 @@ function renderPnL(app){
   }
 
   else if(P.tab==='purchases'){
-    if(!P.draftPurchase.order_date)P.draftPurchase.order_date=new Date().toISOString().slice(0,10)
+    if(!P.draftPurchase.order_date)P.draftPurchase.order_date=todayStr()
     const banner=el('div','mod-banner');banner.textContent="This is your actual supplier spend — separate from the theoretical COGS calculated off recipe costs. They won't match exactly; the gap is real (wastage, price changes, over-pouring) and worth watching, not something to force to zero.";body.appendChild(banner)
 
     const sh=el('div','mod-section-hdr');sh.textContent='Add order';body.appendChild(sh)
