@@ -4089,7 +4089,7 @@ async function pnlDeleteRecipe(id){await db.from('recipe_ingredients').delete().
 async function pnlDownloadReport(btn){
   const P=G.pnl,s=P.summary
   if(!P.current||!s){alert('No data loaded for this week yet');return}
-  if(typeof html2canvas==='undefined'){alert('Report generator failed to load — check your connection and try again.');return}
+  if(typeof html2canvas==='undefined'||typeof window.jspdf==='undefined'){alert('Report generator failed to load — check your connection and try again.');return}
   const origText=btn.textContent;btn.textContent='Generating…';btn.disabled=true
   const revenue=s.revenue,cogs=s.cogs,wages=s.wages,opex=s.other_opex
   const gp=revenue-cogs,gpPct=revenue?(gp/revenue*100):0,net=gp-wages-opex
@@ -4141,11 +4141,14 @@ async function pnlDownloadReport(btn){
   document.body.appendChild(card)
   try{
     const canvas=await html2canvas(card,{backgroundColor:'#0a0a0a',scale:2})
-    const dataUrl=canvas.toDataURL('image/png')
-    const a=document.createElement('a')
-    a.href=dataUrl;a.download=`chip-shop-bxtn-${P.current.week_label}-pnl.png`
-    document.body.appendChild(a);a.click();a.remove()
-  }catch(err){alert('Could not generate image: '+err.message)}
+    const imgData=canvas.toDataURL('image/png')
+    const{jsPDF}=window.jspdf
+    const pxToMm=px=>px*0.264583
+    const pdfW=pxToMm(canvas.width/2),pdfH=pxToMm(canvas.height/2)
+    const pdf=new jsPDF({orientation:pdfH>pdfW?'portrait':'landscape',unit:'mm',format:[pdfW,pdfH]})
+    pdf.addImage(imgData,'PNG',0,0,pdfW,pdfH)
+    pdf.save(`chip-shop-bxtn-${P.current.week_label}-pnl.pdf`)
+  }catch(err){alert('Could not generate PDF: '+err.message)}
   document.body.removeChild(card)
   btn.textContent=origText;btn.disabled=false
 }
@@ -4292,7 +4295,7 @@ function renderPnL(app){
     P.showEditDateForm=!P.showEditDateForm;P.showNewPeriodForm=false;render()
   }
   const delBtn=el('button','mod-btn-out');delBtn.textContent='Delete Week';delBtn.style.padding='9px 14px';delBtn.style.borderColor='#fb0000';delBtn.style.color='#fb0000';delBtn.onclick=pnlDeletePeriod
-  const shareBtn=el('button','mod-btn-out');shareBtn.textContent='Download Report';shareBtn.style.padding='9px 14px'
+  const shareBtn=el('button','mod-btn-out');shareBtn.textContent='Download Report (PDF)';shareBtn.style.padding='9px 14px'
   shareBtn.onclick=()=>pnlDownloadReport(shareBtn)
   const pill=el('span','status-pill '+(P.current&&P.current.status==='locked'?'green':'amber'));pill.textContent=P.current?P.current.status:'no week'
   btnRow.appendChild(pill);btnRow.appendChild(newBtn);if(P.current)btnRow.appendChild(editDateBtn);if(P.current)btnRow.appendChild(shareBtn);btnRow.appendChild(lockBtn);btnRow.appendChild(delBtn)
