@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#000;color:#fff;font-family:'aktiv-grotesk','Inter',sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased}
@@ -613,7 +614,7 @@ let G={
   // Pest Log
   pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:todayStr(),reporter:'',severity:'medium',notes:'',action:''},filter:'all',loaded:false,loading:false,items:[],saving:false},
   // P&L
-  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},stockLoaded:false,stockLoading:false,stockIngredients:[],stockCounts:{},stockPrevCounts:{},stockSearch:'',stockSaving:false,realCogs:null,preview:{items:null,wages:null,ingredients:null}},
+  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},stockLoaded:false,stockLoading:false,stockIngredients:[],stockCounts:{},stockPrevCounts:{},stockSearch:'',stockSaving:false,realCogs:null,monthSelect:'',preview:{items:null,wages:null,ingredients:null}},
 }
 
 // ============================================================
@@ -4149,6 +4150,109 @@ async function pnlDownloadReport(btn){
   btn.textContent=origText;btn.disabled=false
 }
 
+function pnlAvailableMonths(){
+  const P=G.pnl
+  const months={}
+  P.periods.forEach(p=>{
+    const key=p.start_date.slice(0,7)
+    months[key]=true
+  })
+  return Object.keys(months).sort().reverse()
+}
+
+async function pnlDownloadMonthlyReport(btn,monthKey){
+  if(!monthKey){alert('Pick a month first');return}
+  if(typeof html2canvas==='undefined'||typeof window.jspdf==='undefined'){alert('Report generator failed to load — check your connection and try again.');return}
+  const origText=btn.textContent;btn.textContent='Generating…';btn.disabled=true
+  const P=G.pnl
+  const weeksInMonth=P.periods.filter(p=>p.start_date.slice(0,7)===monthKey).sort((a,b)=>a.start_date.localeCompare(b.start_date))
+  if(!weeksInMonth.length){alert('No weeks found for that month');btn.textContent=origText;btn.disabled=false;return}
+
+  const{data:summaries}=await db.from('pnl_summary').select('*').in('period_id',weeksInMonth.map(w=>w.id))
+  const byId={}
+  ;(summaries||[]).forEach(s=>byId[s.period_id]=s)
+
+  let tRev=0,tCogs=0,tWages=0,tOpex=0
+  const rows=weeksInMonth.map(w=>{
+    const s=byId[w.id]||{revenue:0,cogs:0,wages:0,other_opex:0}
+    const gp=s.revenue-s.cogs,net=gp-s.wages-s.other_opex
+    tRev+=s.revenue;tCogs+=s.cogs;tWages+=s.wages;tOpex+=s.other_opex
+    return{label:w.week_label,status:w.status,revenue:s.revenue,net}
+  })
+  const tGp=tRev-tCogs,tGpPct=tRev?(tGp/tRev*100):0,tNet=tGp-tWages-tOpex
+  const monthName=new Date(monthKey+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'})
+  const genDate=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+  const netColor=tNet>=0?'#4caf50':'#fb0000'
+  const gpColor=tGpPct>=60?'#4caf50':tGpPct>=40?'#ff9800':'#fb0000'
+  const anyDraft=weeksInMonth.some(w=>w.status==='draft')
+
+  const rowsHtml=rows.map(r=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1a1a">
+      <div>
+        <span style="font-weight:700">${r.label}</span>
+        <span style="margin-left:8px;font-size:0.6rem;letter-spacing:1px;text-transform:uppercase;color:${r.status==='locked'?'#4caf50':'#ff9800'}">${r.status}</span>
+      </div>
+      <div style="text-align:right">
+        <span style="color:#999;margin-right:16px">${pnlMoney(r.revenue)} rev</span>
+        <span style="font-weight:700;color:${r.net>=0?'#4caf50':'#fb0000'}">${pnlMoney(r.net)} net</span>
+      </div>
+    </div>`).join('')
+
+  const card=document.createElement('div')
+  card.style.cssText='position:fixed;left:-9999px;top:0;width:680px;background:#0a0a0a;color:#fff;font-family:aktiv-grotesk,Inter,sans-serif;padding:36px 40px;box-sizing:border-box;border:2px solid #fb0000'
+  card.innerHTML=`
+    <div style="text-align:center;margin-bottom:6px">
+      <span style="color:#fb0000;font-weight:900;font-size:1.8rem;letter-spacing:1px">CHIP</span>
+      <span style="color:#fff;font-weight:900;font-size:1.8rem;letter-spacing:1px"> SHOP BXTN</span>
+    </div>
+    <div style="text-align:center;color:#888;font-size:0.65rem;letter-spacing:4px;text-transform:uppercase;margin-bottom:24px">Monthly Profit &amp; Loss</div>
+    <div style="height:2px;background:#fb0000;margin-bottom:24px"></div>
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:1.5rem;font-weight:800;letter-spacing:1px">${monthName}</div>
+      <div style="color:#999;font-size:0.85rem;margin-top:2px">${weeksInMonth.length} week${weeksInMonth.length===1?'':'s'}</div>
+      ${anyDraft?'<div style="display:inline-block;margin-top:8px;padding:3px 12px;border:1px solid #ff9800;color:#ff9800;font-size:0.65rem;letter-spacing:2px;text-transform:uppercase">Includes draft week(s) — not yet final</div>':''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+      <div style="background:#111;padding:16px;text-align:center">
+        <div style="font-size:1.6rem;font-weight:800">${pnlMoney(tRev)}</div>
+        <div style="color:#888;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;margin-top:4px">Revenue</div>
+      </div>
+      <div style="background:#111;padding:16px;text-align:center">
+        <div style="font-size:1.6rem;font-weight:800;color:${gpColor}">${pnlMoney(tGp)}</div>
+        <div style="color:#888;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;margin-top:4px">Gross Profit (${tGpPct.toFixed(1)}%)</div>
+      </div>
+      <div style="background:#111;padding:16px;text-align:center">
+        <div style="font-size:1.6rem;font-weight:800">${pnlMoney(tWages)}</div>
+        <div style="color:#888;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;margin-top:4px">Wages</div>
+      </div>
+      <div style="background:#111;padding:16px;text-align:center">
+        <div style="font-size:1.6rem;font-weight:800;color:${netColor}">${pnlMoney(tNet)}</div>
+        <div style="color:#888;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;margin-top:4px">Net Position</div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #222;padding-top:16px;font-size:0.8rem;line-height:2;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between"><span style="color:#999">COGS (recipe-costed)</span><span>${pnlMoney(tCogs)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:#999">Fixed & other opex</span><span>${pnlMoney(tOpex)}</span></div>
+    </div>
+    <div style="font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:8px">Week by week</div>
+    ${rowsHtml}
+    <div style="text-align:center;color:#555;font-size:0.6rem;letter-spacing:1px;margin-top:28px">Generated ${genDate} · 378 Coldharbour Lane, Brixton</div>
+  `
+  document.body.appendChild(card)
+  try{
+    const canvas=await html2canvas(card,{backgroundColor:'#0a0a0a',scale:2})
+    const imgData=canvas.toDataURL('image/png')
+    const{jsPDF}=window.jspdf
+    const pxToMm=px=>px*0.264583
+    const pdfW=pxToMm(canvas.width/2),pdfH=pxToMm(canvas.height/2)
+    const pdf=new jsPDF({orientation:pdfH>pdfW?'portrait':'landscape',unit:'mm',format:[pdfW,pdfH]})
+    pdf.addImage(imgData,'PNG',0,0,pdfW,pdfH)
+    pdf.save(`chip-shop-bxtn-${monthKey}-monthly-pnl.pdf`)
+  }catch(err){alert('Could not generate PDF: '+err.message)}
+  document.body.removeChild(card)
+  btn.textContent=origText;btn.disabled=false
+}
+
 function renderPnL(app){
   const P=G.pnl
   if(!P.loaded&&!P.loading){pnlLoadAll();return}
@@ -4273,6 +4377,20 @@ function renderPnL(app){
   }
 
   if(P.tab==='dashboard'){
+    const months=pnlAvailableMonths()
+    if(months.length){
+      if(!P.monthSelect||!months.includes(P.monthSelect))P.monthSelect=months[0]
+      const mCard=el('div','mod-card')
+      const mHdr=el('div','mod-card-title');mHdr.textContent='Monthly report';mHdr.style.marginBottom='10px'
+      mCard.appendChild(mHdr)
+      const mRow=el('div','mod-form-grid')
+      mRow.appendChild(modField('Month',modSelect(P.monthSelect,months.map(m=>[m,new Date(m+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'})]),v=>{P.monthSelect=v;render()})))
+      mCard.appendChild(mRow)
+      const mBtn=el('button','mod-btn-out');mBtn.textContent='Download Month (PDF)';mBtn.style.marginTop='10px'
+      mBtn.onclick=()=>pnlDownloadMonthlyReport(mBtn,P.monthSelect)
+      mCard.appendChild(mBtn)
+      body.appendChild(mCard)
+    }
     const sh=el('div','mod-section-hdr');sh.textContent='Revenue by category';body.appendChild(sh)
     if(!P.revenue.length){const e=el('div','mod-empty');e.textContent='No sales imported for this week yet';body.appendChild(e)}
     else P.revenue.forEach(r=>{
