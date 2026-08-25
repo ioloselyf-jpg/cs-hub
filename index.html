@@ -4060,6 +4060,12 @@ async function pnlAddPurchase(){
   if(!d.order_date){alert('Pick the order date');return}
   const amt=pnlNum(d.amount)
   if(!amt){alert('Enter an amount');return}
+  const dup=(P.purchases||[]).find(p=>p.supplier===supplierName&&Number(p.amount)===amt)
+  if(dup){
+    const dupDate=new Date(dup.order_date+'T12:00:00').toLocaleDateString('en-GB')
+    const proceed=confirm(`${supplierName} already has a ${pnlMoney(amt)} order logged this week (dated ${dupDate}). This looks like it might be the same invoice entered twice.\n\nAdd it anyway?`)
+    if(!proceed)return
+  }
   const{error}=await db.from('supplier_orders').insert({
     period_id:P.currentId,supplier:supplierName,order_date:d.order_date,
     amount:amt,payment_method:d.payment_method,receipt_url:d.photo_url||null,note:d.note||null
