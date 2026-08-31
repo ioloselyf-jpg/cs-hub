@@ -3905,7 +3905,7 @@ async function pnlDeletePeriod(){
 async function pnlImportItems(file){
   const P=G.pnl
   const text=await pnlReadFile(file)
-  const rows=pnlParseTSV(text);const header=rows[0];const body=rows.slice(1).filter(r=>r.length>=header.length&&r[0])
+  const rows=pnlParseTSV(text);const header=rows[0];const body=rows.slice(1).filter(r=>r.length>=header.length&&r[0]&&r[0].trim().toLowerCase()!=='total')
   const records=body.map(r=>({period_id:P.currentId,item_name:r[0],quantity:pnlNum(r[1]),gross_sales:pnlNum(r[2]),discounts:pnlNum(r[3]),refunds:pnlNum(r[4]),net_item_sales:pnlNum(r[5]),tax:pnlNum(r[6]),net_sales:pnlNum(r[7]),category:r[9]||'Uncategorised',subcategory:r[10]||null,type:r[11]||'Beverage'}))
   P.preview.items={records,total:records.reduce((s,r)=>s+r.net_sales,0)}
   render()
@@ -4008,7 +4008,7 @@ function pnlCalcRealCogs(){
 async function pnlImportWages(file){
   const P=G.pnl
   const text=await pnlReadFile(file)
-  const rows=pnlParseTSV(text);const header=rows[0];const body=rows.slice(1).filter(r=>r.length>=header.length&&r[0])
+  const rows=pnlParseTSV(text);const header=rows[0];const body=rows.slice(1).filter(r=>r.length>=header.length&&r[0]&&r[0].trim().toLowerCase()!=='total')
   const records=body.map(r=>({period_id:P.currentId,employee_name:r[0],rate:pnlNum(r[1]),hours_worked:Math.round(pnlHhmm(r[2])*100)/100,payment:pnlNum(r[3])}))
   const flags=records.filter(r=>r.rate===0&&r.hours_worked>0)
   P.preview.wages={records,total:records.reduce((s,r)=>s+r.payment,0),flags}
@@ -4025,7 +4025,7 @@ async function pnlCommitWages(){
 async function pnlImportIngredients(file){
   const P=G.pnl
   const text=await pnlReadFile(file)
-  const rows=pnlParseTSV(text);const header=rows[0];const body=rows.slice(1).filter(r=>r.length>=header.length&&r[0])
+  const rows=pnlParseTSV(text);const header=rows[0];const body=rows.slice(1).filter(r=>r.length>=header.length&&r[0]&&r[0].trim().toLowerCase()!=='total')
   const records=body.map(r=>{
     const qm=(r[5]||'').match(/([\d.]+)\s*(ml|L|g|kg)?/i)
     let qty=qm?parseFloat(qm[1]):0;let unit=(qm&&qm[2])?qm[2].toLowerCase():'ml'
