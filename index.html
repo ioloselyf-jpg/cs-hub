@@ -574,7 +574,7 @@ const STAFF_PIN='1738'
 let G={
   screen:'dash',
   status:'connecting',
-  unlocked:{compliance:false,fire:false,cash:false,pest:false},
+  unlocked:{compliance:false,fire:false,cash:false,pest:false,dj:false},
   pinTarget:null,
   pinInput:'',
   pinError:false,
@@ -613,6 +613,7 @@ let G={
   suppliers:{tab:'list',items:[],loading:false,loaded:false,draft:{name:'',category:'food',contact_name:'',phone:'',email:'',account_number:'',payment_terms:'',delivery_days:'',notes:''},saving:false,editId:null,search:''},
   // Pest Log
   pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:todayStr(),reporter:'',severity:'medium',notes:'',action:''},filter:'all',loaded:false,loading:false,items:[],saving:false},
+  dj:{tab:'new',draft:{dj_name:'',event_date:todayStr(),fee:'',contact:'',notes:'',booked_by:''},loaded:false,loading:false,items:[],saving:false},
   // P&L
   pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},stockLoaded:false,stockLoading:false,stockIngredients:[],stockCounts:{},stockPrevCounts:{},stockSearch:'',stockSaving:false,realCogs:null,monthSelect:'',preview:{items:null,wages:null,ingredients:null}},
 }
@@ -648,6 +649,7 @@ const DASH_CARDS=[
   {id:'fire',icon:'🔥',name:'Fire Safety',desc:'Full PAS 79 fire risk assessment with evidence uploads and printable report.',locked:true},
   {id:'training',icon:'👥',name:'Staff Training',desc:'Track staff certifications, expiry dates, and compliance across the whole team.',locked:true},
   {id:'pest',icon:'🐭',name:'Pest Log',desc:'Log rodent and insect sightings by location and severity. Auto-alerts when EHO risk threshold is reached.',locked:true},
+  {id:'dj',icon:'🎧',name:'DJ Bookings',desc:'Log DJ bookings, fees and contacts. Cost feeds automatically into the correct week\'s P&L.',locked:true},
   {id:'pnl',icon:'📈',name:'P&L',desc:'Weekly profit & loss — Blink imports for revenue and wages, automated COGS from recipes, manual entry for the rest.',locked:true},
 ]
 DASH_CARDS.forEach(c=>{if(!(c.id in G.unlocked))G.unlocked[c.id]=false})
@@ -736,6 +738,7 @@ function render(){
     else if(G.screen==='training') renderTraining(app)
     else if(G.screen==='premises') renderPremises(app)
     else if(G.screen==='pest') renderPestLog(app)
+    else if(G.screen==='dj') renderDJ(app)
     else if(G.screen==='pnl') renderPnL(app)
   }
 }
@@ -2187,6 +2190,7 @@ async function init(){
   db.channel('hub-training').on('postgres_changes',{event:'*',schema:'public',table:'staff_training'},async()=>{const{data}=await db.from('staff_training').select('*').eq('active',true).order('name');if(data)G.train.staff=data.map(r=>({id:r.id,name:r.name,role:r.role,training:r.training||{},active:r.active}));render()}).subscribe()
   db.channel('hub-risk').on('postgres_changes',{event:'*',schema:'public',table:'risk_hazards'},async()=>{const{data}=await db.from('risk_hazards').select('*').eq('shop_id','chipshop-bxtn-378').order('area');if(data)G.risk.hazards=data.map(r=>({id:r.id,area:r.area,hazard:r.hazard,who:r.who||'',likelihood:r.likelihood,severity:r.severity,controls:r.controls||'',reviewer:r.reviewer||'',reviewDate:r.review_date||'',notes:r.notes||''}));render()}).subscribe()
   db.channel('hub-pest').on('postgres_changes',{event:'*',schema:'public',table:'pest_logs'},async()=>{const{data}=await db.from('pest_logs').select('*').order('log_date',{ascending:false}).order('created_at',{ascending:false});if(data){G.pest.items=data;G.pest.loaded=true;render()}}).subscribe()
+  db.channel('hub-dj').on('postgres_changes',{event:'*',schema:'public',table:'dj_bookings'},async()=>{const{data}=await db.from('dj_bookings').select('*').order('event_date',{ascending:false}).order('created_at',{ascending:false});if(data){G.dj.items=data;G.dj.loaded=true;render()}}).subscribe()
 
   setInterval(()=>render(),60000)
   render()
@@ -3790,6 +3794,83 @@ function renderPestLog(app){
   app.appendChild(wrap)
 }
 
+async function loadDJBookings(){
+  const P=G.dj
+  P.loading=true;render()
+  const{data}=await db.from('dj_bookings').select('*').order('event_date',{ascending:false}).order('created_at',{ascending:false})
+  P.items=data||[]
+  P.loaded=true;P.loading=false;render()
+}
+
+function renderDJ(app){
+  const P=G.dj
+  if(!P.loaded&&!P.loading) loadDJBookings()
+
+  app.appendChild(modHero('<span class="r">DJ</span> Bookings','Fees, contacts and dates — feeds automatically into the correct week\'s P&L',[]))
+  const body=el('div','mod-body')
+
+  const tabs=modTabs([{id:'new',label:'New Booking'},{id:'history',label:'History'}],P.tab,t=>{P.tab=t;render()})
+  body.appendChild(tabs)
+
+  if(P.tab==='new'){
+    const d=P.draft
+    const grid=el('div','mod-form-grid')
+    grid.appendChild(modField('DJ name',modInput(d.dj_name,v=>d.dj_name=v,'DJ name')))
+    grid.appendChild(modField('Date',modInput(d.event_date,v=>d.event_date=v,'','date')))
+    grid.appendChild(modField('Fee (£)',modInput(d.fee,v=>d.fee=v,'0.00','number')))
+    grid.appendChild(modField('Contact',modInput(d.contact,v=>d.contact=v,'Phone, Instagram, email…')))
+    grid.appendChild(modField('Booked by',modInput(d.booked_by,v=>d.booked_by=v,'Your name')))
+    body.appendChild(grid)
+    body.appendChild(modField('Notes',modTextarea(d.notes,v=>d.notes=v,'Genre, set time, feedback…'),true))
+
+    const submitBtn=el('button','btn-red');submitBtn.style.width='100%';submitBtn.style.marginTop='14px'
+    submitBtn.textContent=P.saving?'SAVING…':'→ LOG BOOKING';submitBtn.disabled=P.saving
+    submitBtn.onclick=async()=>{
+      if(!d.dj_name.trim()||!d.event_date||!d.fee){alert('DJ name, date and fee are required');return}
+      P.saving=true;render()
+      const{error}=await db.from('dj_bookings').insert({dj_name:d.dj_name.trim(),event_date:d.event_date,fee:pnlNum(d.fee),contact:d.contact||null,notes:d.notes||null,booked_by:d.booked_by||null})
+      P.saving=false
+      if(error){alert('Error: '+error.message);render();return}
+      P.draft={dj_name:'',event_date:todayStr(),fee:'',contact:'',notes:'',booked_by:''}
+      P.tab='history';P.loaded=false;await loadDJBookings()
+    }
+    body.appendChild(submitBtn)
+  }
+
+  else{
+    if(P.loading){const e=el('div','empty-state');e.textContent='Loading…';body.appendChild(e);app.appendChild(body);return}
+    const total=P.items.reduce((s,i)=>s+Number(i.fee),0)
+    const summary=el('div','mod-banner')
+    summary.textContent=`${P.items.length} booking${P.items.length===1?'':'s'} logged, ${pnlMoney(total)} total.`
+    body.appendChild(summary)
+    if(!P.items.length){const e=el('div','empty-state');e.textContent='No DJ bookings logged yet';body.appendChild(e)}
+    P.items.forEach(item=>{
+      const dateStr=new Date(item.event_date+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})
+      const card=el('div','mod-card');card.style.padding='10px 16px';card.style.display='flex';card.style.justifyContent='space-between';card.style.alignItems='center'
+      card.innerHTML=`<div>
+          <div style="font-weight:700;font-size:0.85rem">${item.dj_name} <span style="color:#666;font-weight:400">— ${dateStr}</span></div>
+          <div style="font-size:0.7rem;color:#777">${item.contact||''}${item.notes?(item.contact?' · ':'')+item.notes:''}${item.booked_by?' · booked by '+item.booked_by:''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-weight:800;font-size:1.1rem">${pnlMoney(item.fee)}</div>
+          <button class="dj-del-btn" data-id="${item.id}" style="background:none;border:none;color:#666;cursor:pointer;font-size:1rem">✕</button>
+        </div>`
+      body.appendChild(card)
+    })
+    setTimeout(()=>{
+      document.querySelectorAll('.dj-del-btn').forEach(btn=>{
+        btn.onclick=async()=>{
+          if(!confirm('Delete this DJ booking?'))return
+          await db.from('dj_bookings').delete().eq('id',btn.dataset.id)
+          P.loaded=false;await loadDJBookings()
+        }
+      })
+    },0)
+  }
+
+  app.appendChild(body)
+}
+
 // ============================================================
 // 15. P&L
 // ============================================================
@@ -3917,6 +3998,7 @@ async function pnlCommitItems(){
   if(error){alert('Import failed: '+error.message);return}
   P.preview.items=null
   await pnlAutoCalcWastage()
+  await pnlAutoCalcDJ()
   await pnlLoadPeriodData()
 }
 async function pnlAutoCalcCogs(){
@@ -3961,6 +4043,19 @@ async function pnlAutoCalcWastage(){
   const wasteCat=P.costCats.find(c=>c.name==='Wastage')
   if(wasteCat&&total>0){
     await db.from('cost_entries').insert({period_id:P.currentId,category_id:wasteCat.id,amount:total,note:'[AUTO] Wastage'})
+  }
+  return{total,count:valid.length}
+}
+async function pnlAutoCalcDJ(){
+  const P=G.pnl
+  if(!P.currentId||!P.current)return{total:0,count:0}
+  const{data:rows}=await db.from('dj_bookings').select('fee').gte('event_date',P.current.start_date).lte('event_date',P.current.end_date)
+  const valid=(rows||[]).filter(r=>r.fee!==null&&r.fee!==undefined)
+  const total=Math.round(valid.reduce((s,r)=>s+(parseFloat(r.fee)||0),0)*100)/100
+  await db.from('cost_entries').delete().eq('period_id',P.currentId).eq('note','[AUTO] DJ')
+  const djCat=P.costCats.find(c=>c.name==='DJ')
+  if(djCat&&total>0){
+    await db.from('cost_entries').insert({period_id:P.currentId,category_id:djCat.id,amount:total,note:'[AUTO] DJ'})
   }
   return{total,count:valid.length}
 }
@@ -4543,9 +4638,23 @@ function renderPnL(app){
     }
     wcActs.appendChild(wcBtn);body.appendChild(wcActs)
 
+    const djc=el('div','mod-banner')
+    djc.style.marginTop='10px'
+    djc.textContent='DJ cost is pulled in automatically from DJ Bookings for this week\'s date range. Hit Recalculate if you\'ve logged a booking since sales were last imported.'
+    body.appendChild(djc)
+    const djActs=el('div','mod-actions');djActs.style.marginBottom='14px'
+    const djBtn=el('button','mod-btn-out');djBtn.textContent='Recalculate DJ costs'
+    djBtn.onclick=async()=>{
+      djBtn.textContent='Calculating…';djBtn.disabled=true
+      const res=await pnlAutoCalcDJ()
+      await pnlLoadPeriodData()
+      alert(`DJ cost this week: ${pnlMoney(res.total)}\nfrom ${res.count} booking${res.count===1?'':'s'}.`)
+    }
+    djActs.appendChild(djBtn);body.appendChild(djActs)
+
     const sh=el('div','mod-section-hdr');sh.textContent='Add cost entry';body.appendChild(sh)
     const form=el('div');const grid=el('div','mod-form-grid')
-    grid.appendChild(modField('Category',modSelect(P.draftCost.category_id,[['','Select…']].concat(P.costCats.filter(c=>!/liquor cogs/i.test(c.name)).map(c=>[c.id,`${c.name} (${c.group_type})`])),v=>P.draftCost.category_id=v)))
+    grid.appendChild(modField('Category',modSelect(P.draftCost.category_id,[['','Select…']].concat(P.costCats.filter(c=>!/liquor cogs|wastage|^dj$/i.test(c.name)).map(c=>[c.id,`${c.name} (${c.group_type})`])),v=>P.draftCost.category_id=v)))
     grid.appendChild(modField('Amount £',modInput(P.draftCost.amount,v=>P.draftCost.amount=v,'0.00','number')))
     grid.appendChild(modField('Note',modInput(P.draftCost.note,v=>P.draftCost.note=v,'Optional')))
     form.appendChild(grid)
@@ -4564,7 +4673,7 @@ function renderPnL(app){
 
     const sh3=el('div','mod-section-hdr');sh3.textContent='Fixed costs (auto-carried into every new week)';body.appendChild(sh3)
     const form2=el('div');const grid2=el('div','mod-form-grid')
-    grid2.appendChild(modField('Category',modSelect(P.draftFixed.category_id,[['','Select…']].concat(P.costCats.filter(c=>!/liquor cogs/i.test(c.name)).map(c=>[c.id,c.name])),v=>P.draftFixed.category_id=v)))
+    grid2.appendChild(modField('Category',modSelect(P.draftFixed.category_id,[['','Select…']].concat(P.costCats.filter(c=>!/liquor cogs|wastage|^dj$/i.test(c.name)).map(c=>[c.id,c.name])),v=>P.draftFixed.category_id=v)))
     grid2.appendChild(modField('Weekly amount £',modInput(P.draftFixed.amount,v=>P.draftFixed.amount=v,'0.00','number')))
     grid2.appendChild(modField('Note',modInput(P.draftFixed.note,v=>P.draftFixed.note=v,'Optional')))
     form2.appendChild(grid2)
