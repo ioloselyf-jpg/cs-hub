@@ -67,6 +67,25 @@ body{background:#000;color:#fff;font-family:'aktiv-grotesk','Inter',sans-serif;m
 /* SECTION WRAPPER */
 .section-wrap{max-width:960px;margin:0 auto;padding:20px 20px 100px}
 
+/* REMINDERS BANNER */
+.rem-banner{background:#0a0a0a;border-bottom:2px solid #fb0000;position:sticky;top:56px;z-index:150}
+.rem-banner.all-done{border-bottom-color:#1e3a1e}
+.rem-head{display:flex;align-items:center;justify-content:space-between;padding:9px 20px;cursor:pointer}
+.rem-head-left{display:flex;align-items:center;gap:8px}
+.rem-icon{font-size:0.9rem}
+.rem-title{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:800;font-size:0.7rem;letter-spacing:2px;text-transform:uppercase;color:#ddd}
+.rem-body{padding:0 20px 16px;max-width:900px;margin:0 auto}
+.rem-name-row{margin-bottom:10px}
+.rem-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #141414}
+.rem-item:last-child{border-bottom:none}
+.rem-item.done .rem-lbl{color:#666;text-decoration:line-through}
+.rem-dot{font-size:1rem;width:20px;text-align:center;color:#555;flex-shrink:0}
+.rem-item.done .rem-dot{color:#4caf50}
+.rem-txt{flex:1}
+.rem-lbl{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:700;font-size:0.82rem;color:#eee}
+.rem-sub{font-size:0.62rem;color:#666;margin-top:2px;text-transform:uppercase;letter-spacing:1px}
+.rem-tick-btn{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:800;font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;padding:7px 12px;background:#fb0000;border:none;color:#fff;cursor:pointer;flex-shrink:0}
+
 /* ============ SHARED COMPONENTS ============ */
 .hero{background:#000;border-bottom:1px solid #111;padding:32px 24px 24px;text-align:center}
 .ht{font-family:'aktiv-grotesk','Inter',sans-serif;font-weight:900;font-size:clamp(2.2rem,6.5vw,4rem);letter-spacing:1px;line-height:0.95;text-transform:uppercase}
@@ -616,6 +635,8 @@ let G={
   dj:{tab:'new',draft:{dj_name:'',event_date:todayStr(),fee:'',contact:'',notes:'',booked_by:''},loaded:false,loading:false,items:[],saving:false},
   // P&L
   pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},stockLoaded:false,stockLoading:false,stockIngredients:[],stockCounts:{},stockPrevCounts:{},stockSearch:'',stockSaving:false,realCogs:null,monthSelect:'',monthStats:null,monthStatsLoading:false,preview:{items:null,wages:null,ingredients:null}},
+  // Reminders banner
+  reminders:{loaded:false,loading:false,open:false,staffName:'',dailyTempCount:0,weeklyProbeCount:0,pnlWeekStatus:null,pnlWeekLabel:'',cleanOverdueWeekly:0,ticks:{}},
 }
 
 // ============================================================
@@ -628,6 +649,117 @@ function localDateStr(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padSta
 function todayStr(){return localDateStr(new Date())}
 function daysUntil(d){if(!d)return null;return Math.round((new Date(d)-new Date())/(86400000))}
 function calcExpiry(date,yrs){if(!date||!yrs)return'';const d=new Date(date);d.setFullYear(d.getFullYear()+yrs);return localDateStr(d)}
+
+// ============================================================
+// REMINDERS BANNER
+// ============================================================
+const REMINDER_ITEMS=[
+  {key:'daily_temp',label:'Daily Temp Checks',period:'daily',auto:true,tab:'temps'},
+  {key:'weekly_probe',label:'Weekly Probe Check',period:'weekly',auto:true,tab:'temps'},
+  {key:'weekly_pnl',label:'Weekly P&L',period:'weekly',auto:true,tab:'pnl'},
+  {key:'chicken_delivery_temp',label:'Delivery Temp Check — Raw Chicken',period:'daily',auto:false,tab:'delivery'},
+  {key:'daily_label_check',label:'Daily Label Check',period:'daily',auto:false,tab:null},
+  {key:'weekly_label_review',label:'Weekly Label Review',period:'weekly',auto:false,tab:null},
+  {key:'weekly_deep_clean',label:'Weekly Deep Clean',period:'weekly',auto:true,tab:'cleaning'},
+]
+async function loadReminders(){
+  const R=G.reminders
+  if(R.loading)return
+  R.loading=true;render()
+  try{
+    const today=todayStr()
+    const monday=localDateStr(pnlMonday(new Date()))
+    const sunday=(()=>{const d=new Date(monday+'T12:00:00');d.setDate(d.getDate()+6);return localDateStr(d)})()
+    const isoWeek=pnlIsoWeek(new Date())
+    const[temp,probe,pnlPer,clean,ticks]=await Promise.all([
+      db.from('temperature_logs').select('id',{count:'exact',head:true}).eq('log_date',today),
+      db.from('probe_calibration_logs').select('id',{count:'exact',head:true}).gte('log_date',monday).lte('log_date',sunday),
+      db.from('pnl_periods').select('*').eq('start_date',monday).maybeSingle(),
+      db.from('cleaning_log').select('*').order('completed_at',{ascending:false}).limit(500),
+      db.from('checklist_ticks').select('*').in('period_key',[today,isoWeek]),
+    ])
+    R.dailyTempCount=temp.count||0
+    R.weeklyProbeCount=probe.count||0
+    R.pnlWeekStatus=pnlPer.data?pnlPer.data.status:null
+    R.pnlWeekLabel=pnlPer.data?pnlPer.data.week_label:isoWeek
+    if(!G.cleaning.loaded){G.cleaning.tasks=clean.data||[];G.cleaning.loaded=true}
+    R.cleanOverdueWeekly=CLEANING_TASKS.filter(t=>t.freq==='weekly'&&isOverdue(t)).length
+    const tk={}
+    ;(ticks.data||[]).forEach(t=>{tk[t.check_key+'|'+t.period_key]=t})
+    R.ticks=tk
+  }catch(e){console.error(e)}
+  R.loaded=true;R.loading=false;render()
+}
+async function reminderTick(key,periodKey,name){
+  const row={check_key:key,period_key:periodKey,checked_by:name,checked_at:new Date().toISOString()}
+  const{error}=await db.from('checklist_ticks').insert(row)
+  if(error){alert('Error: '+error.message);return}
+  G.reminders.ticks[key+'|'+periodKey]=row
+  render()
+}
+function renderReminderBanner(app){
+  const R=G.reminders
+  if(!R.loaded&&!R.loading) loadReminders()
+  const today=todayStr()
+  const isoWeek=pnlIsoWeek(new Date())
+  const items=REMINDER_ITEMS.map(base=>{
+    const it=Object.assign({},base)
+    if(it.auto){
+      if(it.key==='daily_temp')it.done=R.dailyTempCount>0
+      else if(it.key==='weekly_probe')it.done=R.weeklyProbeCount>0
+      else if(it.key==='weekly_pnl')it.done=R.pnlWeekStatus==='locked'
+      else if(it.key==='weekly_deep_clean')it.done=R.loaded&&R.cleanOverdueWeekly===0
+    }else{
+      it.periodKey=it.period==='daily'?today:isoWeek
+      it.tick=R.ticks[it.key+'|'+it.periodKey]
+      it.done=!!it.tick
+    }
+    return it
+  })
+  const doneCount=items.filter(i=>i.done).length
+  const allDone=R.loaded&&doneCount===items.length
+
+  const wrap=el('div','rem-banner'+(allDone?' all-done':''))
+  const head=el('div','rem-head')
+  head.onclick=()=>{R.open=!R.open;render()}
+  const left=el('div','rem-head-left')
+  left.innerHTML=`<span class="rem-icon">${allDone?'✅':'⏰'}</span><span class="rem-title">${R.loaded?doneCount+'/'+items.length+' checks done today/this week':'Loading checks…'}</span>`
+  const chev=el('span','chev'+(R.open?' op':''));chev.textContent='▾'
+  head.appendChild(left);head.appendChild(chev)
+  wrap.appendChild(head)
+
+  if(R.open){
+    const body=el('div','rem-body')
+    const nameRow=el('div','rem-name-row')
+    const nameInp=el('input','txt-input');nameInp.placeholder='Your name (for ticking items off)';nameInp.value=R.staffName;nameInp.style.maxWidth='240px'
+    nameInp.oninput=e=>{R.staffName=e.target.value}
+    nameRow.appendChild(nameInp)
+    body.appendChild(nameRow)
+
+    items.forEach(it=>{
+      const row=el('div','rem-item'+(it.done?' done':''))
+      const dot=el('span','rem-dot');dot.textContent=it.done?'✓':'○'
+      const txt=el('div','rem-txt')
+      let sub=it.period==='daily'?'Daily':'Weekly'
+      if(it.done&&it.tick)sub+=' · done by '+(it.tick.checked_by||'?')
+      else if(it.done&&it.auto)sub+=' · confirmed from logged data'
+      txt.innerHTML=`<div class="rem-lbl">${it.label}</div><div class="rem-sub">${sub}</div>`
+      row.appendChild(dot);row.appendChild(txt)
+      if(!it.auto&&!it.done){
+        const btn=el('button','rem-tick-btn');btn.textContent='Mark Done'
+        btn.onclick=(e)=>{e.stopPropagation();if(!R.staffName.trim()){alert('Enter your name first');return};reminderTick(it.key,it.periodKey,R.staffName.trim())}
+        row.appendChild(btn)
+      }
+      if(it.tab){
+        row.style.cursor='pointer'
+        row.onclick=()=>{G.screen=it.tab;render()}
+      }
+      body.appendChild(row)
+    })
+    wrap.appendChild(body)
+  }
+  app.appendChild(wrap)
+}
 
 // ============================================================
 // DASHBOARD CARDS
@@ -717,6 +849,8 @@ function render(){
   badge.textContent=G.status==='live'?'● Live':'Connecting...'
   hr.appendChild(badge);hdr.appendChild(lw);hdr.appendChild(hr)
   app.appendChild(hdr)
+
+  renderReminderBanner(app)
 
   if(G.screen==='dash') renderDash(app)
   else{
