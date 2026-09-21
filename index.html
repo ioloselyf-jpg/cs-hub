@@ -582,7 +582,7 @@ let G={
   // Compliance
   comp:{tab:'food',openSecs:{},checked:{},actuals:{},costOpen:true},
   // Temps
-  temps:{tab:'kitchen',session:'Opening',staffName:'',readings:{},actions:{},submitted:{},unitHist:{},histFrom:'',histTo:'',histArea:'all',histLoaded:false,histLoading:false,histRows:[]},
+  temps:{tab:'kitchen',session:'Opening',staffName:'',readings:{},actions:{},submitted:{},unitHist:{},histFrom:'',histTo:'',histArea:'all',histLoaded:false,histLoading:false,histRows:[],calDraft:{probe_name:'',ice_temp:'',boil_temp:'',staff_name:'',notes:'',corrective_action:''},calItems:[],calLoaded:false,calLoading:false,calSaving:false},
   // Fire
   fire:{tab:'assess',openSecs:{premises:true},responses:{},premNotes:{},assessorName:'',assessorRole:'',assessorDate:todayStr(),reviewDate:'',files:{},scanning:false,scanErr:null,saving:false},
   // Training
@@ -615,7 +615,7 @@ let G={
   pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:todayStr(),reporter:'',severity:'medium',notes:'',action:''},filter:'all',loaded:false,loading:false,items:[],saving:false},
   dj:{tab:'new',draft:{dj_name:'',event_date:todayStr(),fee:'',contact:'',notes:'',booked_by:''},loaded:false,loading:false,items:[],saving:false},
   // P&L
-  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},stockLoaded:false,stockLoading:false,stockIngredients:[],stockCounts:{},stockPrevCounts:{},stockSearch:'',stockSaving:false,realCogs:null,monthSelect:'',preview:{items:null,wages:null,ingredients:null}},
+  pnl:{tab:'dashboard',loaded:false,loading:false,periods:[],currentId:null,current:null,revenue:[],unrecipe:[],summary:null,costCats:[],costEntries:[],fixedCosts:[],recipeRows:[],ingredientOpts:[],wageCount:0,showNewPeriodForm:false,newPeriodDate:'',showEditDateForm:false,editPeriodDate:'',draftCost:{category_id:'',amount:'',note:''},draftFixed:{category_id:'',amount:'',note:''},draftRecipe:{item_name:'',ingredient_id:'',qty:''},purchases:[],draftPurchase:{supplier:'Hills Prospect',other_supplier:'',order_date:'',amount:'',payment_method:'account',note:'',photo_url:null},stockLoaded:false,stockLoading:false,stockIngredients:[],stockCounts:{},stockPrevCounts:{},stockSearch:'',stockSaving:false,realCogs:null,monthSelect:'',monthStats:null,monthStatsLoading:false,preview:{items:null,wages:null,ingredients:null}},
 }
 
 // ============================================================
@@ -635,7 +635,7 @@ function calcExpiry(date,yrs){if(!date||!yrs)return'';const d=new Date(date);d.s
 const DASH_CARDS=[
   {id:'compliance',icon:'🍟',name:'Compliance',desc:'UK compliance checklist with projected vs actual costs. 69 checks across food safety, HR, health & safety, and legal.',locked:true},
   {id:'premises',icon:'🏠',name:'Premises Checks',desc:'Daily & weekly operational checks across kitchen, bar, floor, toilets, cellar and plant room.',locked:true},
-  {id:'temps',icon:'🌡️',name:'Temperature Log',desc:'Log fridge and freezer temps every service across kitchen and bar. 12 units tracked.',locked:true},
+  {id:'temps',icon:'🌡️',name:'Temperature Log',desc:'Log fridge and freezer temps every service across kitchen and bar, plus weekly probe thermometer calibration checks.',locked:true},
   {id:'allergens',icon:'🥜',name:'Allergens & Recipes',desc:'Natasha\u2019s Law compliance. Menu items, ingredients and the 14 UK allergens with last-reviewed dates.',locked:true},
   {id:'delivery',icon:'📦',name:'Delivery Log',desc:'Goods-in checks. Supplier, chilled temp, batch numbers, photo and signed off — HACCP traceability.',locked:true},
   {id:'incident',icon:'🚨',name:'Incident Log',desc:'Accidents, near misses, complaints, refusals and RIDDOR-reportable events with witness sign-off.',locked:true},
@@ -1098,10 +1098,17 @@ function renderTemps(app){
     t.innerHTML=`${label}<span class="tab-ct">${d}/${items.length} logged</span>`
     t.onclick=()=>{T.tab=key;render()};tabs.appendChild(t)
   })
+  const calTab=el('button','tab'+(T.tab==='calibration'?' on':''));calTab.textContent='🌡️ Calibration'
+  calTab.onclick=()=>{T.tab='calibration';render()};tabs.appendChild(calTab)
   const histTab=el('button','tab'+(T.tab==='history'?' on':''));histTab.textContent='📜 History'
   histTab.onclick=()=>{T.tab='history';render()};tabs.appendChild(histTab)
 
   app.appendChild(tabs)
+
+  if(T.tab==='calibration'){
+    tempsRenderCalibration(app,T)
+    return
+  }
 
   if(T.tab==='history'){
     tempsRenderHistory(app,T)
@@ -1261,6 +1268,103 @@ async function tempsLoadHistory(T){
   const{data}=await db.from('temperature_logs').select('*').gte('log_date',T.histFrom).lte('log_date',T.histTo).order('log_date',{ascending:false})
   T.histRows=data||[]
   T.histLoaded=true;T.histLoading=false;render()
+}
+
+// ============================================================
+// PROBE CALIBRATION
+// ============================================================
+const CAL_ICE_MIN=-1,CAL_ICE_MAX=1   // ice water should read 0°C ±1
+const CAL_BOIL_MIN=99,CAL_BOIL_MAX=101 // boiling water should read 100°C ±1 (sea level)
+
+async function tempsLoadCalibration(T){
+  if(T.calLoading)return
+  T.calLoading=true;render()
+  const{data}=await db.from('probe_calibration_logs').select('*').order('logged_at',{ascending:false}).limit(60)
+  T.calItems=data||[]
+  T.calLoaded=true;T.calLoading=false;render()
+}
+
+async function tempsSaveCalibration(){
+  const T=G.temps,d=T.calDraft
+  if(!d.probe_name.trim()){alert('Enter a probe name/ID.');return}
+  if(!d.staff_name.trim()){alert('Please enter your name.');return}
+  const ice=parseFloat(d.ice_temp),boil=parseFloat(d.boil_temp)
+  if(isNaN(ice)||isNaN(boil)){alert('Enter both the ice water and boiling water readings.');return}
+  const icePass=ice>=CAL_ICE_MIN&&ice<=CAL_ICE_MAX
+  const boilPass=boil>=CAL_BOIL_MIN&&boil<=CAL_BOIL_MAX
+  const overallPass=icePass&&boilPass
+  if(!overallPass&&!(d.corrective_action||'').trim()){alert('This probe failed calibration — describe the corrective action (e.g. recalibrated, taken out of service, replaced) before saving.');return}
+  T.calSaving=true;render()
+  const row={probe_name:d.probe_name.trim(),ice_water_temp:ice,boiling_water_temp:boil,ice_pass:icePass,boil_pass:boilPass,overall_pass:overallPass,corrective_action:d.corrective_action||null,staff_name:d.staff_name.trim(),notes:d.notes||null,logged_at:new Date().toISOString(),log_date:todayStr()}
+  const{error}=await db.from('probe_calibration_logs').insert(row)
+  T.calSaving=false
+  if(error){alert('Error: '+error.message);render();return}
+  T.calDraft={probe_name:d.probe_name,ice_temp:'',boil_temp:'',staff_name:d.staff_name,notes:'',corrective_action:''}
+  T.calItems.unshift(row)
+  render()
+}
+
+function tempsRenderCalibration(app,T){
+  const d=T.calDraft
+  const wrap=el('div','section-wrap')
+
+  const lb=el('div');lb.style.cssText='background:#0a0a0a;border-left:3px solid #fb0000;padding:10px 20px;font-size:0.65rem;color:#888;line-height:1.6;border-bottom:1px solid #111;margin-bottom:14px'
+  lb.innerHTML='<strong style="color:#fff">UK Law:</strong> Check every probe thermometer weekly. Ice water should read 0°C (±1°C) · Boiling water should read 100°C (±1°C) · If a probe fails, take it out of service and log the corrective action. Keep records 3 months minimum.'
+  wrap.appendChild(lb)
+
+  const form=el('div','mod-card');form.style.padding='16px 18px'
+  const grid=el('div','mod-form-grid')
+  grid.appendChild(modField('Probe name / ID',modInput(d.probe_name,v=>{d.probe_name=v},'e.g. Kitchen Probe 1')))
+  grid.appendChild(modField('Logged by',modInput(d.staff_name,v=>{d.staff_name=v},'Your name')))
+  form.appendChild(grid)
+
+  const iceN=parseFloat(d.ice_temp),boilN=parseFloat(d.boil_temp)
+  const icePass=!isNaN(iceN)&&iceN>=CAL_ICE_MIN&&iceN<=CAL_ICE_MAX
+  const boilPass=!isNaN(boilN)&&boilN>=CAL_BOIL_MIN&&boilN<=CAL_BOIL_MAX
+
+  const grid2=el('div','mod-form-grid')
+  const iceWrap=el('div')
+  iceWrap.appendChild(modField('Ice water reading (°C) — target 0°C ±1',modInput(d.ice_temp,v=>{d.ice_temp=v;render()},'0.0')))
+  if(d.ice_temp!==''){const chip=el('div','status-chip '+(icePass?'chip-ok':'chip-danger'));chip.style.marginTop='4px';chip.style.display='inline-block';chip.textContent=icePass?'✓ Pass':'✕ Fail';iceWrap.appendChild(chip)}
+  grid2.appendChild(iceWrap)
+  const boilWrap=el('div')
+  boilWrap.appendChild(modField('Boiling water reading (°C) — target 100°C ±1',modInput(d.boil_temp,v=>{d.boil_temp=v;render()},'100.0')))
+  if(d.boil_temp!==''){const chip=el('div','status-chip '+(boilPass?'chip-ok':'chip-danger'));chip.style.marginTop='4px';chip.style.display='inline-block';chip.textContent=boilPass?'✓ Pass':'✕ Fail';boilWrap.appendChild(chip)}
+  grid2.appendChild(boilWrap)
+  form.appendChild(grid2)
+
+  const bothEntered=d.ice_temp!==''&&d.boil_temp!==''&&!isNaN(iceN)&&!isNaN(boilN)
+  if(bothEntered&&!(icePass&&boilPass)){
+    const lNotes=el('span','field-label');lNotes.textContent='Corrective action (required — probe failed)'
+    const tNotes=el('textarea','txt-input');tNotes.style.height='60px';tNotes.style.resize='vertical';tNotes.style.marginTop='6px'
+    tNotes.placeholder='e.g. Taken out of service, recalibrated against reference probe, replaced with spare…'
+    tNotes.value=d.corrective_action||'';tNotes.oninput=()=>{d.corrective_action=tNotes.value}
+    form.appendChild(lNotes);form.appendChild(tNotes)
+  }
+
+  const lNotes2=el('span','field-label');lNotes2.textContent='Notes (optional)'
+  const tNotes2=el('textarea','txt-input');tNotes2.style.height='50px';tNotes2.style.resize='vertical';tNotes2.style.marginTop='6px'
+  tNotes2.value=d.notes||'';tNotes2.oninput=()=>{d.notes=tNotes2.value}
+  form.appendChild(lNotes2);form.appendChild(tNotes2)
+
+  const acts=el('div','mod-actions')
+  const save=el('button','mod-btn');save.textContent=T.calSaving?'Saving…':'Log Calibration Check';save.disabled=T.calSaving
+  save.onclick=tempsSaveCalibration
+  acts.appendChild(save);form.appendChild(acts)
+  wrap.appendChild(form)
+
+  if(!T.calLoaded&&!T.calLoading)tempsLoadCalibration(T)
+  const sh=el('div','mod-section-hdr');sh.textContent='Recent checks';wrap.appendChild(sh)
+  if(T.calLoading){const e=el('div','mod-empty');e.textContent='Loading…';wrap.appendChild(e)}
+  else if(!T.calItems.length){const e=el('div','mod-empty');e.textContent='No calibration checks logged yet';wrap.appendChild(e)}
+  else T.calItems.forEach(r=>{
+    const c=el('div','mod-card'+(r.overall_pass?'':' warn'))
+    const when=new Date(r.logged_at)
+    c.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${r.probe_name}</div><div class="mod-card-sub">${when.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} ${when.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} · ${r.staff_name||'—'}</div></div><span class="mod-pill ${r.overall_pass?'green':'red'}">${r.overall_pass?'✓ Pass':'✕ Fail'}</span></div><div style="font-size:0.75rem;color:#999;margin-top:6px">Ice: ${r.ice_water_temp}°C ${r.ice_pass?'✓':'✕'} · Boiling: ${r.boiling_water_temp}°C ${r.boil_pass?'✓':'✕'}</div>${r.corrective_action?`<div style="font-size:0.72rem;color:#ff9800;margin-top:4px">Action: ${r.corrective_action}</div>`:''}${r.notes?`<div style="font-size:0.72rem;color:#777;margin-top:4px">${r.notes}</div>`:''}`
+    wrap.appendChild(c)
+  })
+
+  app.appendChild(wrap)
 }
 
 async function logSingleTemp(unit){
@@ -4254,6 +4358,26 @@ async function pnlDownloadReport(btn){
   btn.textContent=origText;btn.disabled=false
 }
 
+async function pnlLoadMonthStats(monthKey){
+  const P=G.pnl
+  if(P.monthStatsLoading)return
+  P.monthStatsLoading=true
+  const weeksInMonth=P.periods.filter(p=>p.start_date.slice(0,7)===monthKey).sort((a,b)=>a.start_date.localeCompare(b.start_date))
+  if(!weeksInMonth.length){P.monthStats={key:monthKey,weeks:[],revenue:0,cogs:0,wages:0,opex:0};P.monthStatsLoading=false;render();return}
+  const{data:summaries}=await db.from('pnl_summary').select('*').in('period_id',weeksInMonth.map(w=>w.id))
+  const byId={}
+  ;(summaries||[]).forEach(s=>byId[s.period_id]=s)
+  let tRev=0,tCogs=0,tWages=0,tOpex=0
+  const weeks=weeksInMonth.map(w=>{
+    const s=byId[w.id]||{revenue:0,cogs:0,wages:0,other_opex:0}
+    const gp=s.revenue-s.cogs,net=gp-s.wages-s.other_opex
+    tRev+=s.revenue;tCogs+=s.cogs;tWages+=s.wages;tOpex+=s.other_opex
+    return{label:w.week_label,status:w.status,revenue:s.revenue,wages:s.wages,net}
+  })
+  P.monthStats={key:monthKey,weeks,revenue:tRev,cogs:tCogs,wages:tWages,opex:tOpex}
+  P.monthStatsLoading=false;render()
+}
+
 function pnlAvailableMonths(){
   const P=G.pnl
   const months={}
@@ -4365,11 +4489,13 @@ function renderPnL(app){
   const s=P.summary
   const revenue=s?s.revenue:0,cogs=s?s.cogs:0,wages=s?s.wages:0,opex=s?s.other_opex:0
   const gp=revenue-cogs,gpPct=revenue?(gp/revenue*100):0,net=gp-wages-opex
+  const wagePct=revenue?(wages/revenue*100):0
 
   app.appendChild(modHero('<span class="r">P&amp;L</span>','Weekly profit & loss — Blink imports + recipe-costed COGS',[
     {value:pnlMoney(revenue),label:'Revenue'},
     {value:pnlMoney(gp),label:`Gross Profit (${gpPct.toFixed(1)}%)`,color:gpPct>=60?'#4caf50':gpPct>=40?'#ff9800':'#fb0000'},
     {value:pnlMoney(wages),label:'Wages'},
+    {value:wagePct.toFixed(1)+'%',label:'Labour vs Takings',color:wagePct<=30?'#4caf50':wagePct<=35?'#ff9800':'#fb0000'},
     {value:pnlMoney(net),label:'Net Position',color:net>=0?'#4caf50':'#fb0000'},
   ]))
 
@@ -4494,6 +4620,36 @@ function renderPnL(app){
       mBtn.onclick=()=>pnlDownloadMonthlyReport(mBtn,P.monthSelect)
       mCard.appendChild(mBtn)
       body.appendChild(mCard)
+
+      if(!P.monthStats||P.monthStats.key!==P.monthSelect){
+        if(!P.monthStatsLoading)pnlLoadMonthStats(P.monthSelect)
+        const e=el('div','mod-empty');e.textContent='Loading month…';body.appendChild(e)
+      }else{
+        const ms=P.monthStats
+        const mGp=ms.revenue-ms.cogs,mGpPct=ms.revenue?(mGp/ms.revenue*100):0
+        const mNet=mGp-ms.wages-ms.opex
+        const mWagePct=ms.revenue?(ms.wages/ms.revenue*100):0
+        const sumCard=el('div','mod-card');sumCard.style.padding='16px 18px'
+        const sh3=el('div','mod-card-title');sh3.textContent='Month at a glance — '+new Date(ms.key+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'})
+        sumCard.appendChild(sh3)
+        const statGrid=el('div');statGrid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:12px'
+        const mkStat=(val,lbl,color)=>{const b=el('div');b.style.cssText='background:#111;padding:12px;text-align:center';b.innerHTML='<div style="font-size:1.2rem;font-weight:800;'+(color?'color:'+color:'')+'">'+val+'</div><div style="color:#888;font-size:0.55rem;letter-spacing:1px;text-transform:uppercase;margin-top:4px">'+lbl+'</div>';return b}
+        statGrid.appendChild(mkStat(pnlMoney(ms.revenue),'Revenue'))
+        statGrid.appendChild(mkStat(mGpPct.toFixed(1)+'%','GP ('+pnlMoney(mGp)+')',mGpPct>=60?'#4caf50':mGpPct>=40?'#ff9800':'#fb0000'))
+        statGrid.appendChild(mkStat(pnlMoney(ms.wages),'Wages'))
+        statGrid.appendChild(mkStat(mWagePct.toFixed(1)+'%','Labour vs Takings',mWagePct<=30?'#4caf50':mWagePct<=35?'#ff9800':'#fb0000'))
+        statGrid.appendChild(mkStat(pnlMoney(mNet),'Net Position',mNet>=0?'#4caf50':'#fb0000'))
+        sumCard.appendChild(statGrid)
+        const wksWrap=el('div');wksWrap.style.marginTop='14px'
+        ms.weeks.forEach(w=>{
+          const row=el('div');row.style.cssText='display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1a1a1a;font-size:0.8rem'
+          const wWagePct=w.revenue?(w.wages/w.revenue*100):0
+          row.innerHTML='<div><span style="font-weight:700">'+w.label+'</span><span style="margin-left:8px;color:'+(w.status==='locked'?'#4caf50':'#ff9800')+';font-size:0.6rem;text-transform:uppercase;letter-spacing:1px">'+w.status+'</span></div><div><span style="color:#999;margin-right:12px">'+pnlMoney(w.revenue)+' rev</span><span style="color:#999;margin-right:12px">'+wWagePct.toFixed(1)+'% labour</span><span style="font-weight:700;color:'+(w.net>=0?'#4caf50':'#fb0000')+'">'+pnlMoney(w.net)+' net</span></div>'
+          wksWrap.appendChild(row)
+        })
+        sumCard.appendChild(wksWrap)
+        body.appendChild(sumCard)
+      }
     }
     const sh=el('div','mod-section-hdr');sh.textContent='Revenue by category';body.appendChild(sh)
     if(!P.revenue.length){const e=el('div','mod-empty');e.textContent='No sales imported for this week yet';body.appendChild(e)}
