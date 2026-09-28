@@ -1095,7 +1095,7 @@ function renderCompliance(app){
         list.appendChild(row)
       })
       block.appendChild(list)
-      block.innerHTML+=`<div class="cost-note">* Enter actual costs paid. Red = over projected.</div>`
+      const costNote=el('div','cost-note');costNote.textContent='* Enter actual costs paid. Red = over projected.';block.appendChild(costNote)
       cs.appendChild(block)
     })
     cp.appendChild(cs)
@@ -1872,7 +1872,7 @@ function renderTraining(app){
         right.innerHTML=`<div class="status-pill ${pm.cls}">${pm.txt}</div>`
         const eb=el('button','status-pill pill-miss');eb.style.cursor='pointer';eb.textContent='Edit'
         eb.onclick=e=>{e.stopPropagation();openTrainModal('edit',member.id)};right.appendChild(eb)
-        right.innerHTML+=`<span class="chev${isOpen?' op':''}">▼</span>`
+        const chev=el('span','chev'+(isOpen?' op':''));chev.textContent='▼';right.appendChild(chev)
         chdr.appendChild(left);chdr.appendChild(right);card.appendChild(chdr)
         if(isOpen){
           const cbody=el('div');cbody.style.padding='12px 14px'
@@ -5028,13 +5028,15 @@ function renderPnL(app){
     if(P.realCogs){
       const r=P.realCogs
       const diff=P.summary?(r.realCogs-P.summary.cogs):null
-      rc.innerHTML+=`<div style="margin-top:12px;font-size:0.85rem;line-height:1.9">
+      const rcOut=el('div');rcOut.style.cssText='margin-top:12px;font-size:0.85rem;line-height:1.9'
+      rcOut.innerHTML=`<div>
         Opening stock value: <b>${pnlMoney(r.openingValue)}</b><br>
         + Purchases this week: <b>${pnlMoney(r.purchasesValue)}</b><br>
         − Closing stock value: <b>${pnlMoney(r.closingValue)}</b><br>
         <span style="font-size:1.1rem;color:#fb0000">= Real COGS: <b>${pnlMoney(r.realCogs)}</b></span><br>
         ${P.summary?`<span style="color:#999">Theoretical (recipe-based) COGS: ${pnlMoney(P.summary.cogs)} — difference: ${diff>=0?'+':''}${pnlMoney(diff)}</span>`:''}
       </div>`
+      rc.appendChild(rcOut)
     }
     body.appendChild(rc)
 
