@@ -1452,29 +1452,63 @@ function tempsRenderCalibration(app,T){
   grid.appendChild(modField('Logged by',modInput(d.staff_name,v=>{d.staff_name=v},'Your name')))
   form.appendChild(grid)
 
-  const iceN=parseFloat(d.ice_temp),boilN=parseFloat(d.boil_temp)
-  const icePass=!isNaN(iceN)&&iceN>=CAL_ICE_MIN&&iceN<=CAL_ICE_MAX
-  const boilPass=!isNaN(boilN)&&boilN>=CAL_BOIL_MIN&&boilN<=CAL_BOIL_MAX
-
+  // Live pass/fail state. Never call render() from these inputs: it rebuilds the whole
+  // screen, drops focus after one keystroke and stops the user typing. Update in place.
+  const calState=()=>{
+    const iceN=parseFloat(d.ice_temp),boilN=parseFloat(d.boil_temp)
+    return{iceN,boilN,
+      icePass:!isNaN(iceN)&&iceN>=CAL_ICE_MIN&&iceN<=CAL_ICE_MAX,
+      boilPass:!isNaN(boilN)&&boilN>=CAL_BOIL_MIN&&boilN<=CAL_BOIL_MAX}
+  }
+  const calChips={}
+  const calTempField=(label,key,placeholder)=>{
+    const wrapEl=el('div')
+    const inp=el('input','mod-input')
+    inp.type='text';inp.inputMode='text';inp.autocomplete='off'
+    inp.placeholder=placeholder;inp.value=d[key]||''
+    const chip=el('div','status-chip');chip.style.cssText='margin-top:4px;display:none'
+    calChips[key]=chip
+    inp.oninput=e=>{
+      // digits, one optional leading minus, one optional decimal point
+      let v=e.target.value.replace(/[^0-9.\-]/g,'')
+      if(v.indexOf('-')>0)v=v.replace(/-/g,'')
+      const fd=v.indexOf('.')
+      if(fd>=0)v=v.slice(0,fd+1)+v.slice(fd+1).replace(/\./g,'')
+      e.target.value=v
+      d[key]=v
+      refreshCal()
+    }
+    wrapEl.appendChild(modField(label,inp));wrapEl.appendChild(chip)
+    return wrapEl
+  }
   const grid2=el('div','mod-form-grid')
-  const iceWrap=el('div')
-  iceWrap.appendChild(modField('Ice water reading (°C) — target 0°C ±1',modInput(d.ice_temp,v=>{d.ice_temp=v;render()},'0.0')))
-  if(d.ice_temp!==''){const chip=el('div','status-chip '+(icePass?'chip-ok':'chip-danger'));chip.style.marginTop='4px';chip.style.display='inline-block';chip.textContent=icePass?'✓ Pass':'✕ Fail';iceWrap.appendChild(chip)}
-  grid2.appendChild(iceWrap)
-  const boilWrap=el('div')
-  boilWrap.appendChild(modField('Boiling water reading (°C) — target 100°C ±1',modInput(d.boil_temp,v=>{d.boil_temp=v;render()},'100.0')))
-  if(d.boil_temp!==''){const chip=el('div','status-chip '+(boilPass?'chip-ok':'chip-danger'));chip.style.marginTop='4px';chip.style.display='inline-block';chip.textContent=boilPass?'✓ Pass':'✕ Fail';boilWrap.appendChild(chip)}
-  grid2.appendChild(boilWrap)
+  grid2.appendChild(calTempField('Ice water reading (°C) — target 0°C ±1','ice_temp','0.0'))
+  grid2.appendChild(calTempField('Boiling water reading (°C) — target 100°C ±1','boil_temp','100.0'))
   form.appendChild(grid2)
 
-  const bothEntered=d.ice_temp!==''&&d.boil_temp!==''&&!isNaN(iceN)&&!isNaN(boilN)
-  if(bothEntered&&!(icePass&&boilPass)){
-    const lNotes=el('span','field-label');lNotes.textContent='Corrective action (required — probe failed)'
-    const tNotes=el('textarea','txt-input');tNotes.style.height='60px';tNotes.style.resize='vertical';tNotes.style.marginTop='6px'
-    tNotes.placeholder='e.g. Taken out of service, recalibrated against reference probe, replaced with spare…'
-    tNotes.value=d.corrective_action||'';tNotes.oninput=()=>{d.corrective_action=tNotes.value}
-    form.appendChild(lNotes);form.appendChild(tNotes)
+  // Corrective action box is built once and shown/hidden, so typing in it is never interrupted
+  const caWrap=el('div');caWrap.style.display='none'
+  const lCA=el('span','field-label');lCA.textContent='Corrective action (required — probe failed)'
+  const tCA=el('textarea','txt-input');tCA.style.height='60px';tCA.style.resize='vertical';tCA.style.marginTop='6px'
+  tCA.placeholder='e.g. Taken out of service, recalibrated against reference probe, replaced with spare…'
+  tCA.value=d.corrective_action||'';tCA.oninput=()=>{d.corrective_action=tCA.value}
+  caWrap.appendChild(lCA);caWrap.appendChild(tCA)
+  form.appendChild(caWrap)
+
+  const refreshCal=()=>{
+    const s=calState()
+    const setChip=(chip,n,pass)=>{
+      if(isNaN(n)){chip.style.display='none';return}
+      chip.style.display='inline-block'
+      chip.className='status-chip '+(pass?'chip-ok':'chip-danger')
+      chip.textContent=pass?'✓ Pass':'✕ Fail'
+    }
+    setChip(calChips.ice_temp,s.iceN,s.icePass)
+    setChip(calChips.boil_temp,s.boilN,s.boilPass)
+    const bothEntered=!isNaN(s.iceN)&&!isNaN(s.boilN)
+    caWrap.style.display=(bothEntered&&!(s.icePass&&s.boilPass))?'block':'none'
   }
+  refreshCal()
 
   const lNotes2=el('span','field-label');lNotes2.textContent='Notes (optional)'
   const tNotes2=el('textarea','txt-input');tNotes2.style.height='50px';tNotes2.style.resize='vertical';tNotes2.style.marginTop='6px'
@@ -1853,9 +1887,13 @@ function renderTraining(app){
 
   if(TR.tab==='staff'){
     const finp=el('input','txt-input');finp.placeholder='Search staff…';finp.value=TR.filterText;finp.style.cssText='max-width:260px;margin-bottom:14px'
-    finp.oninput=e=>{TR.filterText=e.target.value;render()};main.appendChild(finp)
+    main.appendChild(finp)
+    const staffListWrap=el('div');main.appendChild(staffListWrap)
+    // Rebuilds only the list below the search box, so typing never touches (or loses) focus on finp
+    const renderStaffList=()=>{
+    staffListWrap.innerHTML=''
     const filtered=active.filter(s=>!TR.filterText||s.name.toLowerCase().includes(TR.filterText.toLowerCase()))
-    if(!filtered.length){const e=el('div','empty-state');e.textContent='No staff yet — add your first member';main.appendChild(e)}
+    if(!filtered.length){const e=el('div','empty-state');e.textContent='No staff yet — add your first member';staffListWrap.appendChild(e)}
     else{
       const grid=el('div','staff-grid')
       filtered.forEach(member=>{
@@ -1894,8 +1932,11 @@ function renderTraining(app){
         }
         grid.appendChild(card)
       })
-      main.appendChild(grid)
+      staffListWrap.appendChild(grid)
     }
+    }
+    finp.oninput=e=>{TR.filterText=e.target.value;renderStaffList()}
+    renderStaffList()
   } else if(TR.tab==='matrix'){
     if(!active.length){const e=el('div','empty-state');e.textContent='No staff yet';main.appendChild(e)}
     else{
@@ -3062,11 +3103,15 @@ function renderAllergens(app){
     if(A.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
     if(!A.items.length){body.innerHTML='<div class="mod-empty">No menu items yet. Add some.</div>';app.appendChild(body);return}
     const sr=el('div','mod-search-row')
-    sr.appendChild(modInput(A.search,v=>{A.search=v;render()},'Search items…'))
+    const aSearchInp=modInput(A.search,()=>{},'Search items…')
+    sr.appendChild(aSearchInp)
     const allergenOpts=[['all','All allergens'],...UK_ALLERGENS.map(a=>[a.id,a.label])]
     sr.appendChild(modSelect(A.filterAllergen,allergenOpts,v=>{A.filterAllergen=v;render()}))
     body.appendChild(sr)
-
+    const aListWrap=el('div');body.appendChild(aListWrap)
+    // Rebuilds only the list below the search row, so typing never touches (or loses) focus on aSearchInp
+    const renderAllergenList=()=>{
+    aListWrap.innerHTML=''
     let items=A.items
     if(A.search) items=items.filter(i=>(i.item_name||'').toLowerCase().includes(A.search.toLowerCase()))
     if(A.filterAllergen!=='all') items=items.filter(i=>(i.allergens||[]).includes(A.filterAllergen))
@@ -3080,8 +3125,11 @@ function renderAllergens(app){
         <div class="mod-card-meta">${allergens.length?allergens.map(a=>`<span class="mod-pill red">${a}</span>`).join(''):'<span class="mod-pill green">No allergens</span>'}</div>
         ${it.ingredients?`<div class="mod-card-body" style="font-size:0.7rem;color:#666;margin-top:8px"><strong style="color:#888">Ingredients:</strong> ${it.ingredients}</div>`:''}`
       card.onclick=()=>{A.editId=it.id;A.draft={...it,allergens:it.allergens||[]};A.tab='add';A.recipeLookup=null;render()}
-      body.appendChild(card)
+      aListWrap.appendChild(card)
     })
+    }
+    aSearchInp.oninput=e=>{A.search=e.target.value;renderAllergenList()}
+    renderAllergenList()
   }else{
     const d=A.draft
     const form=el('div','mod-form')
@@ -3775,18 +3823,26 @@ function renderSuppliers(app){
   const body=el('div','mod-body')
   if(S.tab==='list'){
     if(S.loading){body.innerHTML='<div class="mod-empty">Loading…</div>';app.appendChild(body);return}
-    body.appendChild(modField('Search suppliers',modInput(S.search,v=>{S.search=v;render()},'Search…')))
+    const sSearchInp=modInput(S.search,()=>{},'Search…')
+    body.appendChild(modField('Search suppliers',sSearchInp))
+    const sListWrap=el('div');body.appendChild(sListWrap)
+    // Rebuilds only the list below the search field, so typing never touches (or loses) focus on sSearchInp
+    const renderSupplierList=()=>{
+    sListWrap.innerHTML=''
     let items=S.items
     if(S.search) items=items.filter(s=>(s.name||'').toLowerCase().includes(S.search.toLowerCase())||(s.contact_name||'').toLowerCase().includes(S.search.toLowerCase()))
-    if(!items.length){const e=el('div','mod-empty');e.textContent='No suppliers';body.appendChild(e);app.appendChild(body);return}
+    if(!items.length){const e=el('div','mod-empty');e.textContent='No suppliers';sListWrap.appendChild(e);return}
     items.forEach(it=>{
       const card=el('div','mod-card ok')
       card.innerHTML=`<div class="mod-card-hdr"><div><div class="mod-card-title">${it.name}</div><div class="mod-card-sub">${it.category||'-'}${it.contact_name?' · '+it.contact_name:''}</div></div></div>
         <div class="mod-card-meta">${it.phone?`<span class="mod-pill">📞 ${it.phone}</span>`:''}${it.email?`<span class="mod-pill">✉ ${it.email}</span>`:''}${it.account_number?`<span class="mod-pill">A/C ${it.account_number}</span>`:''}${it.delivery_days?`<span class="mod-pill">${it.delivery_days}</span>`:''}${it.payment_terms?`<span class="mod-pill">${it.payment_terms}</span>`:''}</div>
         ${it.notes?`<div class="mod-card-body" style="color:#666">${it.notes}</div>`:''}`
       card.onclick=()=>{S.editId=it.id;S.draft={...it};S.tab='add';render()}
-      body.appendChild(card)
+      sListWrap.appendChild(card)
     })
+    }
+    sSearchInp.oninput=e=>{S.search=e.target.value;renderSupplierList()}
+    renderSupplierList()
   }else{
     const d=S.draft
     const form=el('div','mod-form');const grid=el('div','mod-form-grid')
@@ -5041,7 +5097,8 @@ function renderPnL(app){
     body.appendChild(rc)
 
     const searchWrap=el('div','mod-search-row')
-    searchWrap.appendChild(modInput(P.stockSearch,v=>{P.stockSearch=v;render()},'Search ingredients…'))
+    const stockSearchInp=modInput(P.stockSearch,()=>{},'Search ingredients…')
+    searchWrap.appendChild(stockSearchInp)
     body.appendChild(searchWrap)
 
     const saveActs=el('div','mod-actions');saveActs.style.margin='10px 0'
@@ -5050,13 +5107,18 @@ function renderPnL(app){
     saveActs.appendChild(saveBtn)
     body.appendChild(saveActs)
 
+    const stockListWrap=el('div');body.appendChild(stockListWrap)
+    // Rebuilds only the ingredient list below, so typing never touches (or loses) focus on stockSearchInp.
+    // Each ingredient's own count input is unaffected either way — it never called render() on input.
+    const renderStockList=()=>{
+    stockListWrap.innerHTML=''
     const q=P.stockSearch.trim().toLowerCase()
     const filtered=P.stockIngredients.filter(i=>!q||i.ingredient_name.toLowerCase().includes(q))
     const grouped={}
     filtered.forEach(i=>{(grouped[i.category||'Other']=grouped[i.category||'Other']||[]).push(i)})
-    if(!filtered.length){const e=el('div','mod-empty');e.textContent='No ingredients match';body.appendChild(e)}
+    if(!filtered.length){const e=el('div','mod-empty');e.textContent='No ingredients match';stockListWrap.appendChild(e)}
     Object.keys(grouped).sort().forEach(cat=>{
-      const sh=el('div','mod-section-hdr');sh.textContent=cat;body.appendChild(sh)
+      const sh=el('div','mod-section-hdr');sh.textContent=cat;stockListWrap.appendChild(sh)
       grouped[cat].forEach(ing=>{
         const row=el('div','mod-card');row.style.display='flex';row.style.alignItems='center';row.style.justifyContent='space-between';row.style.gap='12px';row.style.padding='10px 16px'
         const label=el('div')
@@ -5064,9 +5126,12 @@ function renderPnL(app){
         const inp=modInput(P.stockCounts[ing.id]!==undefined?String(P.stockCounts[ing.id]):'',v=>{P.stockCounts[ing.id]=v},'0','number')
         inp.style.width='90px'
         row.appendChild(label);row.appendChild(inp)
-        body.appendChild(row)
+        stockListWrap.appendChild(row)
       })
     })
+    }
+    stockSearchInp.oninput=e=>{P.stockSearch=e.target.value;renderStockList()}
+    renderStockList()
   }
 
   app.appendChild(body)
