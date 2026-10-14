@@ -630,6 +630,8 @@ let G={
   handover:{tab:'today',items:[],loading:false,loaded:false,draft:{handover_date:todayStr(),from_shift:'opening',from_name:'',issues:'',vips:'',deliveries_pending:'',followups:'',sales_target_notes:''},saving:false,saved:false},
   // Suppliers
   suppliers:{tab:'list',items:[],loading:false,loaded:false,draft:{name:'',category:'food',contact_name:'',phone:'',email:'',account_number:'',payment_terms:'',delivery_days:'',notes:''},saving:false,editId:null,search:''},
+  // Fire & H&S logs
+  hs:{tab:'overview',loaded:false,loading:false,err:null,certs:[],logs:[],risks:[],draft:null,lastName:'',saving:false,justSaved:null,openCert:null,certDraft:null,openRisk:null,riskDraft:null,riskArea:'all'},
   // Pest Log
   pest:{tab:'new',draft:{pest:'Mouse',location:'Kitchen',date:todayStr(),reporter:'',severity:'medium',notes:'',action:''},filter:'all',loaded:false,loading:false,items:[],saving:false},
   dj:{tab:'new',draft:{dj_name:'',event_date:todayStr(),fee:'',contact:'',notes:'',booked_by:''},loaded:false,loading:false,items:[],saving:false},
@@ -779,6 +781,7 @@ const DASH_CARDS=[
   {id:'handover',icon:'📝',name:'Shift Handover',desc:'Opening to closing manager passover — issues, VIPs, things to chase tomorrow.',locked:true},
   {id:'suppliers',icon:'📇',name:'Suppliers',desc:'All supplier contacts in one place — rep, account number, payment terms, last delivery.',locked:true},
   {id:'fire',icon:'🔥',name:'Fire Safety',desc:'Full PAS 79 fire risk assessment with evidence uploads and printable report.',locked:true},
+  {id:'hs',icon:'🧯',name:'Fire & H&S Logs',desc:'Weekly alarm tests, fire walk-rounds, emergency lights, drills, certificate expiry tracker, risk register and binder print-outs.',locked:true},
   {id:'training',icon:'👥',name:'Staff Training',desc:'Track staff certifications, expiry dates, and compliance across the whole team.',locked:true},
   {id:'pest',icon:'🐭',name:'Pest Log',desc:'Log rodent and insect sightings by location and severity. Auto-alerts when EHO risk threshold is reached.',locked:true},
   {id:'dj',icon:'🎧',name:'DJ Bookings',desc:'Log DJ bookings, fees and contacts. Cost feeds automatically into the correct week\'s P&L.',locked:true},
@@ -869,6 +872,7 @@ function render(){
     else if(G.screen==='handover') renderHandover(app)
     else if(G.screen==='suppliers') renderSuppliers(app)
     else if(G.screen==='fire') renderFire(app)
+    else if(G.screen==='hs') renderHS(app)
     else if(G.screen==='training') renderTraining(app)
     else if(G.screen==='premises') renderPremises(app)
     else if(G.screen==='pest') renderPestLog(app)
@@ -1805,6 +1809,680 @@ async function saveFireAssessment(){
   const F=G.fire
   await db.from('fire_assessments').upsert({id:'chipshop-bxtn-378',assessor_name:F.assessorName,assessor_role:F.assessorRole,assessment_date:F.assessorDate,review_date:F.reviewDate,responses:F.responses,premises_notes:F.premNotes,overall_risk:fireOverall(),updated_at:new Date().toISOString()},{onConflict:'id'})
   G.fire.saving=false;render()
+}
+
+
+// ============================================================
+// FIRE & H&S — shared data and print templates
+// ============================================================
+// ============================================================
+// FIRE & H&S CORE — shared data + print templates
+// (pure functions, no DOM / db dependency; also used to build the blank-sheet binder PDF)
+// ============================================================
+const HS_SHOP='Chip Shop BXTN'
+const HS_ADDR='378 Coldharbour Lane, Brixton, London SW9'
+
+const HS_LOGTYPES={
+  alarm:{label:'Fire alarm test',icon:'🔔',freq:7,freqLabel:'Weekly',ref:'BS 5839-1 · RRO 2005',
+    extraLabel:'Call point tested',extraPh:'e.g. Kitchen exit, Zone 2',
+    items:['Alarm sounded and was audible in kitchen, bar, cellar, toilets and over music','Panel reset afterwards and showing no faults','Alarm receiving centre / insurer told before the test (if monitored)','Different call point used from last week']},
+  walk:{label:'Fire walk-round',icon:'🚪',freq:7,freqLabel:'Weekly',ref:'RRO 2005 Art 17',
+    extraLabel:'Problems found',extraPh:'Location / what',
+    items:['Escape routes clear (no stock, bins, kegs or boxes)','Final exit doors open freely from inside — no key or bolt needed during trading','Fire exit signs visible and lit','Extinguishers in place, correct type, seal intact, gauge in the green','Fire blanket in place beside the fryer','Fire doors close fully and are not wedged open','Fryer area clear; no cardboard or cloths near heat','Extraction hood and filters free of visible grease build-up','Gas shut-off valve accessible and labelled','Waste and cardboard stored away from exits and heat sources','Electrical sockets not overloaded; no damaged leads','Fire action notice displayed and legible']},
+  emerg:{label:'Emergency lighting test',icon:'💡',freq:31,freqLabel:'Monthly',ref:'BS 5266-1',
+    extraLabel:'Units that failed',extraPh:'Location of each',
+    items:['Flick test done: every emergency light and exit sign came on','Lights held for the test period, then returned to charge (green LED on)','Exit signs legible from the escape routes','Any defective unit reported to the contractor']},
+  co:{label:'CO / gas alarm test',icon:'⚠️',freq:31,freqLabel:'Monthly',ref:'Gas Safety (Installation & Use) Regs 1998',
+    extraLabel:'Alarm expiry date',extraPh:'dd/mm/yyyy',
+    items:['Kitchen CO alarm test button pressed — sounds','Cellar CO2 / gas alarm tested (if fitted)','Alarms in date and batteries OK','Staff know where the gas shut-off and cellar gas isolation are']},
+  aid:{label:'First aid kit check',icon:'🩹',freq:31,freqLabel:'Monthly',ref:'H&S (First-Aid) Regs 1981',
+    extraLabel:'Items restocked',extraPh:'What was replaced',
+    items:['Kit accessible and everyone knows where it is','Contents complete against the list','Nothing out of date','Burns dressings / cooling gel stocked for the kitchen','Eye wash in date','Accident book / report forms available']},
+  drill:{label:'Fire drill',icon:'🏃',freq:365,freqLabel:'At least yearly',ref:'RRO 2005 Art 21',
+    extraLabel:'Time to reach assembly point',extraPh:'e.g. 2m 40s · 9 people',
+    items:['Alarm raised by a manager — all staff involved','Everyone left by the nearest safe exit','Fire wardens checked kitchen, bar, toilets and cellar','Roll call completed at the assembly point','Nobody went back in before the all-clear','Problems written down and actioned']},
+}
+const HS_LOGORDER=['alarm','walk','emerg','co','aid','drill']
+
+const HS_CERT_CATS=['Fire','Gas & electrical','Insurance','Water & hygiene','Premises','Training']
+// interval in months; 0 = no fixed interval. Dates deliberately left blank — only the user knows them.
+const HS_CERTS_DEFAULT=[
+  {id:'c-fra',cat:'Fire',name:'Fire risk assessment review',months:12,ref:'Regulatory Reform (Fire Safety) Order 2005',notes:'Review yearly and after any change (layout, kitchen kit, staffing).'},
+  {id:'c-alarm',cat:'Fire',name:'Fire alarm service by engineer',months:6,ref:'BS 5839-1',notes:'6-monthly is the recommended interval.'},
+  {id:'c-emerg',cat:'Fire',name:'Emergency lighting full-duration test',months:12,ref:'BS 5266-1',notes:'Engineer certificate.'},
+  {id:'c-ext',cat:'Fire',name:'Fire extinguishers and blanket service',months:12,ref:'BS 5306-3',notes:'Class F beside the fryer, CO2 for electrics.'},
+  {id:'c-supp',cat:'Fire',name:'Fryer fire suppression system service',months:6,ref:'Installer / manufacturer',notes:'Only if a system is fitted. Check interval with installer.'},
+  {id:'c-duct',cat:'Fire',name:'Kitchen extraction duct deep clean',months:6,ref:'TR19 Grease',notes:'Interval depends on cooking hours; confirm with contractor. Keep the certificate.'},
+  {id:'c-gas',cat:'Gas & electrical',name:'Gas safety certificate (commercial catering)',months:12,ref:'Gas Safety (Installation & Use) Regs 1998',notes:'Gas Safe engineer. Covers hobs, ovens and fryers.'},
+  {id:'c-eicr',cat:'Gas & electrical',name:'Fixed electrical inspection (EICR)',months:60,ref:'Electricity at Work Regs 1989',notes:'Every 5 years for commercial premises, or sooner if the report says so.'},
+  {id:'c-pat',cat:'Gas & electrical',name:'Portable appliance testing (PAT)',months:12,ref:'Electricity at Work Regs 1989',notes:'Risk-based; yearly for kitchen kit is typical.'},
+  {id:'c-el',cat:'Insurance',name:'Employers liability insurance certificate',months:12,ref:'Employers Liability (Compulsory Insurance) Act 1969',notes:'Must be displayed or available electronically. Fines are per day.'},
+  {id:'c-pl',cat:'Insurance',name:'Public liability insurance',months:12,ref:'Insurance policy',notes:''},
+  {id:'c-leg',cat:'Water & hygiene',name:'Legionella risk assessment review',months:24,ref:'HSE L8 / HSG274',notes:'Hot and cold water system, any shower, ice or water equipment.'},
+  {id:'c-grease',cat:'Water & hygiene',name:'Grease trap / drain clean',months:3,ref:'Water company / contractor',notes:'Keep the waste transfer paperwork.'},
+  {id:'c-pest',cat:'Water & hygiene',name:'Pest control contract and visit report',months:12,ref:'Food Safety Act 1990',notes:'BW Pest Control visits are in the Pest Log.'},
+  {id:'c-lic',cat:'Premises',name:'Premises licence summary displayed and conditions checked',months:12,ref:'Licensing Act 2003',notes:'Check CCTV, Challenge 25, incident and refusals logs against the conditions.'},
+  {id:'c-ftrain',cat:'Training',name:'Fire warden / fire safety training (staff)',months:12,ref:'RRO 2005 Art 21',notes:'Induction plus yearly refresher. Record who attended.'},
+]
+
+// Risk matrix 5x5. Bands: 1-4 low, 5-9 medium, 10-16 high, 17+ critical
+function hsRate(l,s){const sc=(+l)*(+s);return sc<=4?{label:'LOW',color:'#2e7d32',score:sc}:sc<=9?{label:'MEDIUM',color:'#e68900',score:sc}:sc<=16?{label:'HIGH',color:'#d84315',score:sc}:{label:'CRITICAL',color:'#c40000',score:sc}}
+const HS_AREAS={kitchen:'Kitchen',bar:'Bar',cellar:'Cellar',foh:'Front of house',venue:'Whole venue'}
+const HS_L={1:'Rare',2:'Unlikely',3:'Possible',4:'Likely',5:'Almost certain'}
+const HS_S={1:'Negligible',2:'Minor',3:'Moderate',4:'Major',5:'Catastrophic'}
+
+// Template hazards. These are TYPICAL for a chip shop + bar and must be checked on site (status 'draft' until verified).
+const HS_HAZARDS_DEFAULT=[
+  {id:'h-fryer',area:'kitchen',hazard:'Hot oil burns / fryer fire',who:'Kitchen staff',l:3,s:4,rl:2,rs:3,controls:'Staff trained in fryer use before working alone\nThermostat and high-limit cut-out tested\nFryer never left unattended when heating\nOil filtered and changed on a schedule; hot oil never moved by one person\nClass F extinguisher and fire blanket within reach\nNon-slip footwear and apron'},
+  {id:'h-extract',area:'kitchen',hazard:'Grease build-up in extraction causing duct fire',who:'Everyone in the building',l:3,s:5,rl:2,rs:4,controls:'Canopy filters cleaned on a rota\nDuct deep clean by contractor on the TR19 interval, certificate kept\nExtraction on whenever cooking\nSuppression system serviced if fitted'},
+  {id:'h-gas',area:'kitchen',hazard:'Gas leak / carbon monoxide',who:'Everyone in the building',l:2,s:5,rl:1,rs:5,controls:'Annual Gas Safe commercial certificate\nCO alarm fitted and tested monthly\nGas shut-off location known and labelled\nVentilation never blocked'},
+  {id:'h-slip-k',area:'kitchen',hazard:'Slips on greasy or wet kitchen floor',who:'Kitchen staff',l:4,s:3,rl:3,rs:2,controls:'Floor degreased at close and spills cleaned at once\nNon-slip footwear required\nWet floor signs used\nDrains and mats kept clear'},
+  {id:'h-knife',area:'kitchen',hazard:'Knife cuts and slicer / equipment injuries',who:'Kitchen staff',l:3,s:3,rl:2,rs:3,controls:'Sharp knives, correct boards, knives never left in sink\nCut-resistant glove available\nTraining on any slicer or mixer before use; guards never removed\nFirst aid kit stocked'},
+  {id:'h-hot',area:'kitchen',hazard:'Scalds from hot liquids and surfaces',who:'Kitchen and bar staff',l:3,s:3,rl:2,rs:3,controls:'Dry cloths and oven gloves; pans turned inward\nHot items warned loudly in busy periods\nBurns first aid (20 min cool running water) known to staff'},
+  {id:'h-mh',area:'kitchen',hazard:'Manual handling of deliveries, oil and stock',who:'All staff',l:3,s:3,rl:2,rs:3,controls:'Manual handling training at induction\nTwo-person lift for heavy or awkward items\nTrolley used; heavy items stored low-to-mid height\nOil containers on a trolley, never carried up steps alone'},
+  {id:'h-coshh',area:'venue',hazard:'Chemical burns / fumes from cleaning products',who:'All staff',l:2,s:3,rl:1,rs:3,controls:'COSHH assessments and safety data sheets in the binder\nChemicals kept in original labelled containers, never mixed\nGloves and eye protection for concentrate and degreaser\nChemicals stored away from food, ideally below shoulder height'},
+  {id:'h-elec',area:'venue',hazard:'Electric shock / faulty electrical equipment',who:'All staff',l:2,s:4,rl:1,rs:4,controls:'EICR in date; PAT test records kept\nDamaged equipment taken out of use and reported\nRCD protection on circuits\nNo extension lead daisy-chains; sockets not overloaded'},
+  {id:'h-glass',area:'bar',hazard:'Broken glass and cuts',who:'Bar staff, customers',l:4,s:2,rl:3,rs:2,controls:'Broken glass swept and bagged with a dustpan, never picked up by hand\nBroken-glass bin and sharps procedure\nNo glass in the ice well; ice scoop only\nGlass collected regularly'},
+  {id:'h-bar-slip',area:'bar',hazard:'Slips behind the bar and on the shop floor',who:'Bar staff, customers',l:4,s:3,rl:3,rs:2,controls:'Spills cleaned immediately\nBar mats and drains kept clear\nEntrance mat kept flat; floor checked each shift\nSlip, trip and fall incidents recorded'},
+  {id:'h-co2',area:'cellar',hazard:'CO2 / mixed gas leak in the cellar',who:'Anyone entering the cellar',l:2,s:5,rl:1,rs:5,controls:'CO2 monitor fitted in the cellar and tested; staff know what the alarm means\nVentilate the cellar before work; do not stay if the alarm sounds\nCylinders secured upright with a chain/strap\nCylinder changes only by trained staff; cellar not worked alone'},
+  {id:'h-cellar-fall',area:'cellar',hazard:'Falls on cellar steps / trapdoor / trips',who:'Staff and delivery drivers',l:3,s:4,rl:2,rs:4,controls:'Steps and handrail in good condition; lighting adequate\nTrapdoor/hatch guarded or barriers when open\nNever carry kegs on steps without the correct method or equipment\nDelivery driver handles kegs; staff do not climb with a keg'},
+  {id:'h-keg',area:'cellar',hazard:'Manual handling of kegs and cases',who:'Bar and cellar staff',l:4,s:3,rl:3,rs:2,controls:'Keg trolley / lifting aid used\nTwo-person lift or supplier moves it\nManual handling training; no lifting above chest height'},
+  {id:'h-ladder',area:'venue',hazard:'Falls from height (ladders, stools, shelving)',who:'All staff',l:3,s:4,rl:2,rs:3,controls:'Proper step-ladder used; never chairs, crates or stools\nLadder checked before use; someone footing it for high work\nNothing heavy stored high'},
+  {id:'h-violence',area:'foh',hazard:'Aggressive customers, violence and abuse',who:'Front of house and bar staff',l:3,s:4,rl:2,rs:3,controls:'Challenge 25 and refusals handled by a manager\nStaff briefed on de-escalation; never confront alone\nIncident log and CCTV in place\nPhone and panic procedure known; police non-emergency number posted'},
+  {id:'h-lone',area:'venue',hazard:'Lone working and late-night closing',who:'Closing staff',l:3,s:4,rl:2,rs:3,controls:'Two people on closing where possible\nCash moved before the premises are left open\nCheck-in text on arrival home\nDoors locked and alarm set before leaving; safe route home for staff'},
+  {id:'h-allergen',area:'foh',hazard:'Allergic reaction from food or drink',who:'Customers',l:2,s:5,rl:1,rs:5,controls:'Allergen information accurate and shown (14 allergens, Natasha\'s Law)\nStaff trained in allergen awareness\nCross-contact controls in the FSMS\nAllergen question asked at order'},
+  {id:'h-noise',area:'venue',hazard:'Noise (music / DJ events) and hearing',who:'Staff working near speakers, DJs',l:3,s:2,rl:2,rs:2,controls:'Speaker position away from staff stations\nLevels monitored; hearing protection if staff exposed regularly\nDJ set-up cabling secured and tested'},
+  {id:'h-trip',area:'venue',hazard:'Trips from cables, stock and uneven floor',who:'Staff and customers',l:3,s:2,rl:2,rs:2,controls:'Cables routed along walls and taped; no trailing leads\nDeliveries put away promptly\nFloor defects reported and repaired'},
+  {id:'h-young',area:'venue',hazard:'Young workers, new starters, new or expectant mothers',who:'Staff',l:2,s:3,rl:1,rs:3,controls:'Induction before any task; supervised until competent\nNo under-18s in the cellar, on the fryer without assessment, or serving alcohol unsupervised\nIndividual assessment when a worker tells the manager she is pregnant'},
+  {id:'h-legionella',area:'venue',hazard:'Legionella in water systems',who:'Staff, customers',l:1,s:5,rl:1,rs:5,controls:'Legionella risk assessment reviewed on schedule\nRarely used outlets flushed weekly\nHot water at 50°C or above at outlets; cold below 20°C\nShowerheads, hoses and any water equipment cleaned and descaled'},
+  {id:'h-fatigue',area:'venue',hazard:'Fatigue and stress from long shifts',who:'All staff',l:3,s:2,rl:2,rs:2,controls:'Rota allows rest breaks and rest between shifts\nStaff can raise concerns with the manager\nHours reviewed after peak weekends'},
+]
+
+// ---------- PRINT HELPERS ----------
+function hsEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function hsFmt(d){if(!d)return '';const x=new Date(d);return isNaN(x)?'':x.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+function hsAddMonths(dateStr,m){if(!dateStr)return '';const d=new Date(dateStr+'T00:00:00');d.setMonth(d.getMonth()+(+m||0));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+
+function hsPrintCSS(){return `
+@page{size:A4 portrait;margin:12mm}
+@page land{size:A4 landscape;margin:10mm}
+
+.hsp,.hsp *{box-sizing:border-box}
+.hsp{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:10pt;line-height:1.35}
+.hsp-page{page-break-after:always;break-after:page;position:relative;height:271mm;overflow:hidden}
+.hsp-page:last-child{page-break-after:auto;break-after:auto}
+.hsp-land{page:land;height:187mm}
+.hsp-page.flow{height:auto;overflow:visible}
+.hsp-page.flow h2{page-break-after:avoid}
+.hsp-hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #c40000;padding-bottom:6px;margin-bottom:10px}
+.hsp-brand{font-weight:900;font-size:9pt;letter-spacing:2px;text-transform:uppercase}
+.hsp-brand b{color:#c40000}
+.hsp-title{font-weight:900;font-size:17pt;letter-spacing:.5px;text-transform:uppercase;line-height:1.05}
+.hsp-sub{font-size:8.5pt;color:#555;margin-top:2px}
+.hsp-ref{font-size:8pt;color:#555;text-align:right}
+.hsp h2{font-size:11pt;margin:12px 0 4px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #999;padding-bottom:2px}
+.hsp h3{font-size:10pt;margin:8px 0 3px}
+.hsp p{margin:3px 0}
+.hsp table{border-collapse:collapse;width:100%}
+.hsp th,.hsp td{border:1px solid #666;padding:3px 5px;vertical-align:top;font-size:9pt}
+.hsp th{background:#e8e8e8;text-align:left;font-size:8pt;text-transform:uppercase;letter-spacing:.5px}
+.hsp td.c,.hsp th.c{text-align:center}
+.hsp tr{page-break-inside:avoid}
+.hsp .row{height:7.4mm}
+.hsp .row-tall{height:13mm}
+.hsp .box{display:inline-block;width:3.2mm;height:3.2mm;border:1px solid #111;vertical-align:-0.5mm;margin-right:2mm}
+.hsp .fld{display:flex;gap:6mm;margin:6px 0}
+.hsp .fld>div{flex:1;border-bottom:1px solid #111;min-height:6.5mm;font-size:8pt;color:#555}
+.hsp .big{border:1px solid #666;min-height:22mm;padding:3px 5px;font-size:8pt;color:#555;margin-bottom:6px}
+.hsp .key{font-size:8.5pt;margin:4px 0 6px}
+.hsp .key span{display:inline-block;margin-right:10px}
+.hsp .pill{display:inline-block;padding:1px 6px;border-radius:3px;color:#fff;font-weight:700;font-size:8pt}
+.hsp .small{font-size:8pt;color:#555}
+.hsp .foot{position:absolute;bottom:0;left:0;right:0;font-size:7.5pt;color:#777;border-top:1px solid #ccc;padding-top:2px;display:flex;justify-content:space-between}
+.hsp .sign td{height:12mm}
+.hsp .cover{text-align:center;padding-top:55mm}
+.hsp .cover .t{font-weight:900;font-size:38pt;line-height:1;text-transform:uppercase;letter-spacing:2px}
+.hsp .cover .t b{color:#c40000}
+.hsp .cover .s{font-size:14pt;margin-top:10mm;letter-spacing:4px;text-transform:uppercase}
+.hsp .cover .a{margin-top:6mm;color:#555}
+.hsp .cover .rule{width:60mm;height:3px;background:#c40000;margin:12mm auto}
+.hsp .div{text-align:center;padding-top:60mm}
+.hsp .div .n{font-weight:900;font-size:90pt;color:#c40000;line-height:1}
+.hsp .div .t{font-weight:900;font-size:26pt;text-transform:uppercase;letter-spacing:2px;margin-top:6mm}
+.hsp .div ul{display:inline-block;text-align:left;margin-top:12mm;font-size:11pt}
+.hsp .alert{border:3px solid #c40000;padding:4mm;text-align:center;margin:4mm 0}
+.hsp .alert .h{font-weight:900;font-size:22pt;color:#c40000;text-transform:uppercase}
+.hsp ol.big-ol{font-size:11.5pt;line-height:1.4;margin:4mm 0}
+.hsp ol.big-ol li{margin-bottom:3mm}
+`}
+
+function hsHead(title,sub,ref){return `<div class="hsp-hd"><div><div class="hsp-brand"><b>Chip Shop</b> BXTN · ${hsEsc(HS_ADDR)}</div><div class="hsp-title">${hsEsc(title)}</div>${sub?`<div class="hsp-sub">${sub}</div>`:''}</div><div class="hsp-ref">${ref?hsEsc(ref)+'<br>':''}Version / date: ____________</div></div>`}
+function hsFoot(label){return `<div class="foot"><span>${hsEsc(HS_SHOP)} — ${hsEsc(label)}</span><span>Keep in the safety binder</span></div>`}
+function hsFld(labels){return `<div class="fld">${labels.map(l=>`<div>${hsEsc(l)}</div>`).join('')}</div>`}
+function hsBox(t){return `<span class="box"></span>${hsEsc(t)}`}
+
+// Blank repeating log (weekly/monthly) — landscape. Items become numbered columns.
+function hsBlankLog(type,rows){
+  const T=HS_LOGTYPES[type];const n=rows||(T.freq<=7?18:12)
+  const key=T.items.map((t,i)=>`<span><b>${i+1}</b> ${hsEsc(t)}</span>`).join('')
+  const cols=T.items.map((t,i)=>`<th class="c" style="width:7mm">${i+1}</th>`).join('')
+  const body=Array.from({length:n},()=>`<tr class="row"><td style="width:24mm"></td>${T.items.map(()=>'<td class="c"></td>').join('')}<td></td><td style="width:34mm"></td><td style="width:20mm"></td></tr>`).join('')
+  return `<section class="hsp-page hsp-land">${hsHead(T.label+' log',T.freqLabel+' · tick ✓ if OK, ✗ if not and write what you did in the notes · '+hsEsc(T.ref),T.freqLabel)}
+  <div class="key">${key}</div>
+  <table><thead><tr><th style="width:24mm">Date</th>${cols}<th>${hsEsc(T.extraLabel)} / action taken</th><th style="width:34mm">Done by (name)</th><th style="width:20mm">Initials</th></tr></thead><tbody>${body}</tbody></table>
+  ${hsFoot(T.label+' log')}</section>`
+}
+
+function hsBlankDrill(){
+  const T=HS_LOGTYPES.drill
+  return `<section class="hsp-page">${hsHead('Fire drill record','At least once a year, and after any change of staff, layout or kitchen equipment · RRO 2005 Art 21')}
+  ${hsFld(['Date','Time alarm raised','Time last person at assembly point'])}
+  ${hsFld(['Total time to evacuate','Number of people evacuated','Drill led by'])}
+  ${hsFld(['Assembly point used','Weather / time of day / trading? (quiet / busy)'])}
+  <h2>What happened</h2>
+  <table><thead><tr><th>Check</th><th class="c" style="width:16mm">Yes</th><th class="c" style="width:16mm">No</th><th>Comment</th></tr></thead><tbody>
+  ${T.items.concat(['All exits used were unlocked and clear','Any customers / contractors / deliveries accounted for','Fire alarm audible everywhere','Emergency lighting worked (if drill after dark)']).map(t=>`<tr class="row"><td>${hsEsc(t)}</td><td class="c"></td><td class="c"></td><td></td></tr>`).join('')}
+  </tbody></table>
+  <h2>Problems and actions</h2>
+  <table><thead><tr><th>Problem seen</th><th style="width:40mm">Action</th><th style="width:28mm">Who</th><th style="width:22mm">Due</th><th style="width:22mm">Done</th></tr></thead><tbody>${Array.from({length:3},()=>'<tr class="row-tall"><td></td><td></td><td></td><td></td><td></td></tr>').join('')}</tbody></table>
+  <h2>Staff who took part</h2>
+  <table><thead><tr><th>Name</th><th style="width:60mm">Signature</th><th>Name</th><th style="width:60mm">Signature</th></tr></thead><tbody>${Array.from({length:5},()=>'<tr class="row"><td></td><td></td><td></td><td></td></tr>').join('')}</tbody></table>
+  ${hsFld(['Manager signature','Date'])}
+  ${hsFoot('Fire drill record')}</section>`
+}
+
+function hsBlankAccident(){
+  return `<section class="hsp-page">${hsHead('Accident / incident report','Use for any injury, near miss or dangerous occurrence · Keep private — contains personal data','Accident book')}
+  <h2>1. About the person</h2>
+  ${hsFld(['Full name','Staff / customer / contractor','Phone (if not staff)'])}
+  <h2>2. The incident</h2>
+  ${hsFld(['Date','Time','Where exactly'])}
+  <div class="big">What happened, step by step (be factual — what you saw, not opinions):</div>
+  <div class="big">Injury or harm (part of body, type):</div>
+  <h2>3. Treatment</h2>
+  <p>${hsBox('No treatment needed')}   ${hsBox('First aid given on site')}   ${hsBox('Went home')}   ${hsBox('Hospital / 999')}</p>
+  ${hsFld(['First aider name','What was done'])}
+  <h2>4. Reportable? (RIDDOR)</h2>
+  <p>${hsBox('Death / major injury')}   ${hsBox('Off work more than 7 days')}   ${hsBox('Member of the public taken to hospital from the premises')}   ${hsBox('Dangerous occurrence')}   ${hsBox('Not reportable')}</p>
+  ${hsFld(['Reported to HSE? (date / reference)','By whom'])}
+  <h2>5. Witnesses and cause</h2>
+  ${hsFld(['Witness name','Witness contact'])}
+  <div class="big">Cause, and what will stop it happening again (action, who, by when):</div>
+  <h2>6. Sign-off</h2>
+  ${hsFld(['Person reporting (sign)','Manager (sign)','Date'])}
+  <p class="small">Keep for at least 3 years (longer where a claim may follow). Record the hub Incident Log entry number here: __________</p>
+  ${hsFoot('Accident report')}</section>`
+}
+
+function hsFireAction(){
+  return `<section class="hsp-page">${hsHead('Fire action notice','Display next to every exit and the alarm panel · fill in the blanks once, then laminate')}
+  <div class="alert"><div class="h">If you discover a fire</div></div>
+  <ol class="big-ol"><li><b>Raise the alarm</b> — shout "FIRE!" and break the nearest call point.</li><li><b>Call 999</b> (or make sure someone does) — give the address: <b>378 Coldharbour Lane, Brixton</b>.</li><li><b>Leave the building</b> by the nearest safe exit. Do not stop for belongings.</li><li><b>Only fight a fire</b> if it is small, you are trained, you have a clear escape behind you and it is safe. Fryer fire: <b>never use water</b> — turn off heat if safe, use the fire blanket or Class F extinguisher.</li><li><b>Go to the assembly point</b>: ______________________________________</li></ol>
+  <div class="alert"><div class="h">If you hear the alarm</div></div>
+  <ol class="big-ol"><li>Stop what you are doing. Turn off the fryer and gas if it is safe and on your way out.</li><li>Leave by the nearest exit. Help customers out calmly. Do not use lifts. Do not run.</li><li>Go to the assembly point and report to the manager for the roll call.</li><li><b>Do not go back in</b> until the fire brigade says it is safe.</li></ol>
+  <table><tr style="height:9mm"><td style="width:38mm"><b>Fire wardens on duty</b></td><td></td><td style="width:38mm"><b>Gas shut-off at</b></td><td></td></tr><tr style="height:9mm"><td><b>Emergency services</b></td><td>999</td><td><b>Electricity isolator at</b></td><td></td></tr></table>
+  ${hsFoot('Fire action notice')}</section>`
+}
+
+function hsInduction(){
+  const topics=['Fire exits, assembly point and what to do on the alarm','Where extinguishers and the fire blanket are and which to use (fryer = Class F / blanket only)','Fryer and extraction safe use; hot oil rules','Gas and electricity shut-off points','Cellar safety (CO2 alarm, steps, kegs) — if working there','Manual handling and safe lifting','Slips, spills and safe use of cleaning chemicals (COSHH)','How to report an accident, near miss or hazard','First aiders and the first aid kit location','Lone working / closing procedure and security']
+  return `<section class="hsp-page">${hsHead('Staff safety induction record','Complete before the first solo shift. Repeat fire training every year · RRO 2005 Art 21 · Management of H&S at Work Regs 1999')}
+  ${hsFld(['Name','Role','Start date'])}
+  <table><thead><tr><th>Topic covered</th><th class="c" style="width:16mm">Done</th><th style="width:22mm">Date</th><th style="width:26mm">Trainer initials</th></tr></thead><tbody>${topics.map(t=>`<tr class="row"><td>${hsEsc(t)}</td><td class="c"></td><td></td><td></td></tr>`).join('')}</tbody></table>
+  <p class="small" style="margin-top:6px">I have been shown the above, understand it, and know who to ask if I am not sure.</p>
+  ${hsFld(['Employee signature','Date','Manager signature'])}
+  <h2>Annual refresher</h2>
+  <table><thead><tr><th>Date</th><th>Topics</th><th style="width:30mm">Employee sign</th><th style="width:30mm">Manager sign</th></tr></thead><tbody>${Array.from({length:4},()=>'<tr class="row"><td></td><td></td><td></td><td></td></tr>').join('')}</tbody></table>
+  ${hsFoot('Safety induction')}</section>`
+}
+
+function hsContacts(){
+  const r=['Gas emergency shut-off (location)','Main electricity isolator (location)','Water stopcock (location)','Fryer emergency isolator (location)','Fire alarm panel (location)','First aid kit(s) (location)','Fire extinguishers & blanket (locations)','CO / CO2 alarms (locations)','Assembly point']
+  const c=['Fire / police / ambulance','999','National Gas Emergency','0800 111 999','Gas Safe engineer','','Electrician','','Fire alarm / extinguisher contractor','','Extraction cleaner','','Landlord / managing agent','','Premises licence holder','','Insurance broker / claims line','','Lambeth Council environmental health','','Out-of-hours manager','']
+  let ct='';for(let i=0;i<c.length;i+=2)ct+=`<tr class="row"><td>${hsEsc(c[i])}</td><td>${hsEsc(c[i+1])}</td><td></td></tr>`
+  return `<section class="hsp-page">${hsHead('Emergency shut-offs and contacts','Fill in once. Every manager must know this page.')}
+  <h2>Where things are</h2>
+  <table><tbody>${r.map(t=>`<tr class="row"><td style="width:70mm">${hsEsc(t)}</td><td></td></tr>`).join('')}</tbody></table>
+  <h2>Who to call</h2>
+  <table><thead><tr><th>Who</th><th style="width:40mm">Number</th><th>Account / policy ref</th></tr></thead><tbody>${ct}</tbody></table>
+  ${hsFoot('Emergency shut-offs and contacts')}</section>`
+}
+
+// Certificate register — live rows (optional) or blank
+function hsCertRegister(certs){
+  const list=(certs&&certs.length)?certs:HS_CERTS_DEFAULT.map(c=>({cat:c.cat,name:c.name,months:c.months,ref:c.ref}))
+  const mk=c=>{const nd=c.next_due||(c.last_done&&c.months?hsAddMonths(c.last_done,c.months):'')
+    return `<tr class="row"><td>${hsEsc(c.cat)}</td><td><b>${hsEsc(c.name)}</b> <span class="small">${hsEsc(c.ref||'')}</span></td><td class="c">${c.months?c.months+'m':'—'}</td><td>${hsEsc(hsFmt(c.last_done))}</td><td>${hsEsc(hsFmt(nd))}</td><td>${hsEsc(c.provider||'')}${c.cert_ref?' <span class="small">'+hsEsc(c.cert_ref)+'</span>':''}</td><td></td></tr>`}
+  const blank='<tr class="row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'
+  const per=13,pages=[]
+  for(let i=0;i<list.length;i+=per)pages.push(list.slice(i,i+per))
+  const last=pages[pages.length-1];if(last&&last.length<per-1)last.__pad=Math.min(per-last.length,3)
+  return pages.map((pg,pi)=>`<section class="hsp-page hsp-land">${hsHead('Certificates and inspections register','Every certificate lives behind tab 3 · check monthly · dd/mm/yyyy · page '+(pi+1)+' of '+pages.length,'Updated: ____________')}
+  <table><thead><tr><th style="width:26mm">Type</th><th>Certificate / inspection</th><th class="c" style="width:14mm">Every</th><th style="width:24mm">Last done</th><th style="width:24mm">Next due</th><th style="width:50mm">Done by / ref</th><th style="width:18mm">Filed ✓</th></tr></thead><tbody>${pg.map(mk).join('')}${pg.__pad?Array.from({length:pg.__pad},()=>blank).join(''):''}</tbody></table>
+  ${hsFoot('Certificate register')}</section>`).join('')
+}
+
+// Risk assessment document from hazard rows {area,hazard,who,l,s,rl,rs,controls,owner,review_date,status}
+function hsRiskDoc(hazards,meta){
+  meta=meta||{}
+  const hz=(hazards&&hazards.length)?hazards:HS_HAZARDS_DEFAULT
+  const byArea={};hz.forEach(h=>{(byArea[h.area]=byArea[h.area]||[]).push(h)})
+  const pill=(l,s)=>{const r=hsRate(l,s);return `<span class="pill" style="background:${r.color}">${r.score} ${r.label}</span>`}
+  const tbl=Object.keys(HS_AREAS).filter(a=>byArea[a]).map(a=>`<h2>${HS_AREAS[a]}</h2>
+    <table><thead><tr><th style="width:38mm">Hazard / who is at risk</th><th class="c" style="width:22mm">Before controls</th><th>Controls (tick when verified on site)</th><th class="c" style="width:22mm">After controls</th><th style="width:28mm">Further action / owner / date</th></tr></thead><tbody>
+    ${byArea[a].map(h=>`<tr><td><b>${hsEsc(h.hazard)}</b><div class="small">${hsEsc(h.who||'')}</div></td><td class="c">${pill(h.l,h.s)}<div class="small">L${h.l} × S${h.s}</div></td><td>${String(h.controls||'').split('\n').filter(x=>x.trim()).map(x=>`<div>${hsBox(x.trim())}</div>`).join('')}</td><td class="c">${pill(h.rl||h.l,h.rs||h.s)}<div class="small">L${h.rl||h.l} × S${h.rs||h.s}</div></td><td>${hsEsc(h.owner||'')}${h.review_date?'<div class="small">Review '+hsEsc(hsFmt(h.review_date))+'</div>':''}</td></tr>`).join('')}
+    </tbody></table>`).join('')
+  const matrix=`<table style="width:auto;margin:4px 0"><tr><th></th>${[1,2,3,4,5].map(s=>`<th class="c">S${s}<br><span style="font-weight:400">${HS_S[s]}</span></th>`).join('')}</tr>${[5,4,3,2,1].map(l=>`<tr><th>L${l} ${HS_L[l]}</th>${[1,2,3,4,5].map(s=>{const r=hsRate(l,s);return `<td class="c" style="background:${r.color};color:#fff;font-weight:700">${r.score}</td>`}).join('')}</tr>`).join('')}</table>
+  <p class="small">Score = likelihood × severity. 1–4 Low · 5–9 Medium · 10–16 High · 17–25 Critical. High and Critical must have an action with an owner and a date; Critical means stop the activity until controlled.</p>`
+  return `<section class="hsp-page">${hsHead('General risk assessment','Management of Health and Safety at Work Regulations 1999',meta.ref||'RA-HS-01')}
+  <table><tbody>
+  <tr><th style="width:38mm">Premises</th><td>${hsEsc(HS_SHOP)}, ${hsEsc(HS_ADDR)}</td></tr>
+  <tr><th>Assessor</th><td>${hsEsc(meta.assessor||'')}</td></tr>
+  <tr><th>Employer / responsible person</th><td>${hsEsc(meta.employer||'')}</td></tr>
+  <tr><th>Date assessed</th><td>${hsEsc(hsFmt(meta.date)||'')}</td></tr>
+  <tr><th>Next review (max 12 months, or after an incident or change)</th><td>${hsEsc(hsFmt(meta.review)||'')}</td></tr>
+  </tbody></table>
+  <h2>How to use this assessment</h2>
+  <p>1. Walk the premises. 2. For each hazard tick the controls that are really in place — if a control is missing, write the action. 3. Add hazards that are not listed. 4. Brief all staff and keep this in the binder.</p>
+  ${matrix}
+  ${hsFoot('General risk assessment')}</section>
+  <section class="hsp-page flow">${hsHead('General risk assessment — hazards','')}${tbl}
+  <h2>Sign-off</h2>
+  ${hsFld(['Assessor (sign)','Manager / responsible person (sign)','Date'])}
+  </section>`
+}
+
+function hsLogHistory(type,rows){
+  const T=HS_LOGTYPES[type]
+  const body=rows.map(r=>`<tr><td>${hsEsc(hsFmt(r.log_date))}</td>${T.items.map((_,i)=>`<td class="c">${(r.items&&r.items[i])?'✓':'✗'}</td>`).join('')}<td>${hsEsc([r.extra,r.action,r.notes].filter(Boolean).join(' · '))}</td><td>${hsEsc(r.done_by||'')}</td></tr>`).join('')
+  const key=T.items.map((t,i)=>`<span><b>${i+1}</b> ${hsEsc(t)}</span>`).join('')
+  return `<section class="hsp-page hsp-land">${hsHead(T.label+' — logged in the hub',T.freqLabel+' · '+hsEsc(T.ref),'Printed '+hsFmt(new Date()))}
+  <div class="key">${key}</div>
+  <table><thead><tr><th style="width:24mm">Date</th>${T.items.map((_,i)=>`<th class="c" style="width:7mm">${i+1}</th>`).join('')}<th>${hsEsc(T.extraLabel)} / actions / notes</th><th style="width:34mm">Done by</th></tr></thead><tbody>${body||'<tr class="row"><td colspan="'+(T.items.length+3)+'">No entries</td></tr>'}</tbody></table>
+  ${hsFoot(T.label+' history')}</section>`
+}
+
+// ---------- BINDER-ONLY PAGES ----------
+function hsCover(){return `<section class="hsp-page"><div class="cover"><div class="t"><b>Chip Shop</b><br>BXTN</div><div class="rule"></div><div class="s">Fire &amp; Health and Safety</div><div class="s" style="margin-top:3mm">Compliance Binder</div><div class="a">${hsEsc(HS_ADDR)}</div><div style="margin-top:30mm;text-align:left;width:110mm;margin-left:auto;margin-right:auto"><p>Binder owner: General Manager</p><p>Started: ______________</p><p>Last full review: ______________</p><p>Next full review: ______________</p></div></div></section>`}
+const HS_SECTIONS=[
+  {n:1,t:'Fire safety',items:['Fire risk assessment (PAS 79 module in the hub, printed + signed)','Fire action notice','Weekly alarm test logs','Weekly fire walk-round logs','Monthly emergency lighting logs','Fire drill records','Extinguisher / alarm / emergency light service certificates','Extraction duct clean certificates']},
+  {n:2,t:'Health and safety',items:['General risk assessment','COSHH assessments + safety data sheets','Manual handling / cellar / lone-working notes','Monthly CO / gas alarm logs','First aid kit checks','Emergency shut-offs and contacts']},
+  {n:3,t:'Certificates and contractors',items:['Certificate register','Gas Safe certificate','EICR + PAT records','Employers liability insurance','Public liability insurance','Legionella risk assessment','Pest control contract / reports']},
+  {n:4,t:'People and training',items:['Staff safety induction records','Fire training and refresher records','First aiders','Food hygiene certificates (see FSMS binder)']},
+  {n:5,t:'Incidents',items:['Accident / incident reports','RIDDOR reports','Near-miss reports','Action follow-ups']},
+  {n:6,t:'Food safety & licensing',items:['FSMS / HACCP (separate food safety binder)','Allergen information','Premises licence summary + conditions','Challenge 25 / refusals / incident logs']},
+]
+function hsIndex(){return `<section class="hsp-page">${hsHead('Binder index','Behind each numbered divider')}<table><thead><tr><th style="width:12mm">Tab</th><th>Section</th><th>What goes behind it</th></tr></thead><tbody>${HS_SECTIONS.map(s=>`<tr><td class="c"><b>${s.n}</b></td><td><b>${hsEsc(s.t)}</b></td><td>${s.items.map(hsEsc).join('<br>')}</td></tr>`).join('')}</tbody></table><p class="small" style="margin-top:6px">Paper copies are a back-up — the hub holds the live logs. Print the filled history from the hub each quarter and file it behind the matching tab.</p>${hsFoot('Binder index')}</section>`}
+function hsDivider(n){const s=HS_SECTIONS.find(x=>x.n===n);return `<section class="hsp-page"><div class="div"><div class="n">${s.n}</div><div class="t">${hsEsc(s.t)}</div><ul>${s.items.map(i=>`<li>${hsEsc(i)}</li>`).join('')}</ul></div></section>`}
+function hsInspector(){
+  const q=[['Fire','Written fire risk assessment, dated and reviewed in the last 12 months'],['Fire','Weekly alarm test and walk-round logs (last 12 months)'],['Fire','Alarm, emergency lighting and extinguisher service certificates'],['Fire','Fire drill record in the last 12 months; staff fire training records'],['Fire','Extraction/duct clean certificate; fryer suppression certificate if fitted'],['Fire','Fire exits clear and unlocked, signs lit, fire action notice displayed'],['H&S','Written general risk assessment (5+ staff) — reviewed and signed'],['H&S','COSHH assessments and safety data sheets for every chemical'],['H&S','Gas Safe certificate; EICR; PAT records'],['H&S','Employers liability insurance certificate displayed'],['H&S','First aid provision and accident book; RIDDOR reports'],['H&S','Staff induction, manual handling and cellar-safety records'],['H&S','Legionella risk assessment'],['Licensing','Premises licence summary and conditions met (CCTV, Challenge 25, logs)'],['Food','FHRS rating displayed; FSMS up to date (see food safety binder)']]
+  return `<section class="hsp-page">${hsHead('What an inspector will ask for','Tick when the document is in the binder. Check monthly.')}<table><thead><tr><th style="width:20mm">Area</th><th>Document / proof</th><th class="c" style="width:16mm">In binder</th><th style="width:26mm">Where / date</th></tr></thead><tbody>${q.map(r=>`<tr class="row"><td>${r[0]}</td><td>${hsEsc(r[1])}</td><td class="c"><span class="box" style="margin:0"></span></td><td></td></tr>`).join('')}</tbody></table>${hsFoot('Inspector checklist')}</section>`}
+
+// Whole blank pack (used by the binder PDF AND the hub's "print blank pack" button)
+function hsBlankPack(){
+  return hsCover()+hsIndex()+hsInspector()
+   +hsDivider(1)+hsFireAction()+hsBlankLog('alarm')+hsBlankLog('alarm')+hsBlankLog('alarm')+hsBlankLog('walk')+hsBlankLog('walk')+hsBlankLog('walk')+hsBlankLog('emerg')+hsBlankDrill()
+   +hsDivider(2)+hsRiskDoc(HS_HAZARDS_DEFAULT,{ref:'RA-HS-01'})+hsBlankLog('co')+hsBlankLog('aid')+hsContacts()
+   +hsDivider(3)+hsCertRegister()
+   +hsDivider(4)+hsInduction()+hsInduction()
+   +hsDivider(5)+hsBlankAccident()+hsBlankAccident()
+   +hsDivider(6)
+}
+
+// ============================================================
+// ============ FIRE & H&S LOGS (module id: hs) ============
+// Certificates tracker · fire/H&S logs · risk register · print views
+// Tables: hs_certs, hs_logs, hs_risks (see hs-setup.sql)
+// ============================================================
+function hsNewDraft(type){return{log_type:type,log_date:todayStr(),done_by:(G.hs&&G.hs.lastName)||'',items:{},extra:'',action:'',notes:''}}
+function hsPrint(html){
+  let root=document.getElementById('hs-print-root')
+  if(!root){root=document.createElement('div');root.id='hs-print-root';document.body.appendChild(root)}
+  if(!document.getElementById('hs-print-css')){
+    const st=document.createElement('style');st.id='hs-print-css'
+    st.textContent=hsPrintCSS()+'#hs-print-root{display:none}@media print{body.hs-printing{background:#fff!important;color:#000!important}body.hs-printing>*:not(#hs-print-root){display:none!important}body.hs-printing #hs-print-root{display:block!important}}'
+    document.head.appendChild(st)
+  }
+  root.innerHTML='<div class="hsp">'+html+'</div>'
+  document.body.classList.add('hs-printing')
+  const done=()=>{document.body.classList.remove('hs-printing');root.innerHTML='';window.removeEventListener('afterprint',done)}
+  window.addEventListener('afterprint',done)
+  setTimeout(()=>window.print(),60)
+}
+
+function hsDaysSince(d){return Math.round((new Date(todayStr()+'T00:00:00')-new Date(d+'T00:00:00'))/86400000)}
+function hsCertNext(c){return c.last_done&&c.months?hsAddMonths(c.last_done,c.months):''}
+function hsCertState(c){
+  if(!c.last_done)return{key:'none',label:'No date',cls:'amber'}
+  const n=hsCertNext(c);if(!n)return{key:'ok',label:'Recorded',cls:'green'}
+  const d=Math.round((new Date(n+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000)
+  if(d<0)return{key:'over',label:Math.abs(d)+'d overdue',cls:'red',days:d}
+  if(d<=60)return{key:'soon',label:'Due in '+d+'d',cls:'amber',days:d}
+  return{key:'ok',label:'In date',cls:'green',days:d}
+}
+function hsLogState(type){
+  const last=G.hs.logs.find(x=>x.log_type===type)
+  const T=HS_LOGTYPES[type]
+  if(!last)return{key:'never',label:'Never logged',cls:'red'}
+  const grace=T.freq<=7?9:T.freq<=31?35:T.freq
+  const d=hsDaysSince(last.log_date)
+  if(last.pass===false)return{key:'fail',label:'Last test had a failure',cls:'red',last,days:d}
+  if(d>grace)return{key:'over',label:d+' days ago — overdue',cls:'red',last,days:d}
+  return{key:'ok',label:d===0?'Done today':d+' days ago',cls:'green',last,days:d}
+}
+function hsResidual(r){return hsRate(r.rl||r.l,r.rs||r.s)}
+
+async function hsLoad(){
+  const H=G.hs;H.loading=true;render()
+  const[c,l,r]=await Promise.all([
+    db.from('hs_certs').select('*').order('cat').order('name'),
+    db.from('hs_logs').select('*').order('log_date',{ascending:false}).order('created_at',{ascending:false}).limit(500),
+    db.from('hs_risks').select('*').order('area'),
+  ])
+  const bad=c.error||l.error||r.error
+  H.err=bad?(bad.message||'Database error'):null
+  if(!H.err){
+    H.certs=c.data||[];H.logs=l.data||[];H.risks=r.data||[]
+    if(!H.certs.length){
+      const rows=HS_CERTS_DEFAULT.map(x=>({id:x.id,cat:x.cat,name:x.name,months:x.months,ref:x.ref,notes:x.notes}))
+      const{error}=await db.from('hs_certs').upsert(rows);if(!error)H.certs=rows
+    }
+    if(!H.risks.length){
+      const rows=HS_HAZARDS_DEFAULT.map(x=>({id:x.id,area:x.area,hazard:x.hazard,who:x.who,l:x.l,s:x.s,rl:x.rl,rs:x.rs,controls:x.controls,status:'draft'}))
+      const{error}=await db.from('hs_risks').upsert(rows);if(!error)H.risks=rows
+    }
+  }
+  H.loaded=true;H.loading=false;render()
+}
+
+async function hsSaveCert(c){
+  const row={id:c.id,cat:c.cat,name:c.name,months:+c.months||0,ref:c.ref||'',notes:c.notes||'',provider:c.provider||'',cert_ref:c.cert_ref||'',last_done:c.last_done||null,updated_at:new Date().toISOString()}
+  G.hs.saving=true;render()
+  const{error}=await db.from('hs_certs').upsert(row)
+  G.hs.saving=false
+  if(error){alert('Could not save: '+error.message);render();return}
+  const i=G.hs.certs.findIndex(x=>x.id===c.id);if(i>=0)G.hs.certs[i]={...G.hs.certs[i],...row};else G.hs.certs.push(row)
+  G.hs.openCert=null;G.hs.certDraft=null;render()
+}
+async function hsSaveRisk(h){
+  const row={id:h.id,area:h.area,hazard:h.hazard,who:h.who||'',l:+h.l,s:+h.s,rl:+h.rl,rs:+h.rs,controls:h.controls||'',owner:h.owner||'',review_date:h.review_date||null,status:h.status||'draft',notes:h.notes||'',updated_at:new Date().toISOString()}
+  G.hs.saving=true;render()
+  const{error}=await db.from('hs_risks').upsert(row)
+  G.hs.saving=false
+  if(error){alert('Could not save: '+error.message);render();return}
+  const i=G.hs.risks.findIndex(x=>x.id===h.id);if(i>=0)G.hs.risks[i]=row;else G.hs.risks.push(row)
+  G.hs.openRisk=null;G.hs.riskDraft=null;render()
+}
+async function hsDeleteRisk(id){
+  if(!confirm('Delete this hazard?'))return
+  await db.from('hs_risks').delete().eq('id',id)
+  G.hs.risks=G.hs.risks.filter(x=>x.id!==id);G.hs.openRisk=null;G.hs.riskDraft=null;render()
+}
+async function hsSaveLog(){
+  const H=G.hs,d=H.draft,T=HS_LOGTYPES[d.log_type]
+  if(!d.done_by.trim()){alert('Add who did this check.');return}
+  const allOk=T.items.every((_,i)=>d.items[i])
+  if(!allOk&&!d.action.trim()){alert('Something is not ticked — write what you did about it in "Action taken".');return}
+  H.saving=true;render()
+  const row={log_type:d.log_type,log_date:d.log_date,done_by:d.done_by.trim(),items:d.items,pass:allOk,extra:d.extra,action:d.action,notes:d.notes}
+  const{data,error}=await db.from('hs_logs').insert(row).select().single()
+  H.saving=false
+  if(error){alert('Could not save: '+error.message);render();return}
+  H.logs.unshift(data);H.lastName=d.done_by.trim();H.draft=hsNewDraft(d.log_type);H.justSaved=d.log_type;render()
+}
+async function hsDeleteLog(id){
+  if(!confirm('Delete this log entry?'))return
+  await db.from('hs_logs').delete().eq('id',id)
+  G.hs.logs=G.hs.logs.filter(x=>x.id!==id);render()
+}
+
+function hsPill(txt,cls){const s=el('span','mod-pill '+(cls||''));s.textContent=txt;s.style.cssText='font-size:0.6rem;letter-spacing:1px;text-transform:uppercase;white-space:nowrap';return s}
+function hsScoreRow(label,val,onPick){
+  const w=el('div');w.style.cssText='margin-bottom:8px'
+  const l=el('div','mod-field-lbl');l.textContent=label;w.appendChild(l)
+  const r=el('div');r.style.cssText='display:flex;gap:4px'
+  ;[1,2,3,4,5].forEach(n=>{
+    const b=el('button');b.textContent=n;b.type='button'
+    const on=+val===n
+    b.style.cssText='flex:1;padding:8px 0;font-weight:800;cursor:pointer;border:1px solid '+(on?'#fb0000':'#1a1a1a')+';background:'+(on?'rgba(251,0,0,0.12)':'#0d0d0d')+';color:'+(on?'#fff':'#555')
+    b.onclick=()=>{onPick(n);render()};r.appendChild(b)
+  });w.appendChild(r);return w
+}
+
+function renderHS(app){
+  const H=G.hs
+  if(!H.draft)H.draft=hsNewDraft('alarm')
+  if(!H.loaded&&!H.loading)hsLoad()
+
+  // --- derived numbers for hero
+  const logStates=HS_LOGORDER.map(t=>({t,st:hsLogState(t)}))
+  const logsBad=H.loaded?logStates.filter(x=>x.st.key!=='ok').length:0
+  const certStates=H.certs.map(c=>({c,st:hsCertState(c)}))
+  const certsBad=certStates.filter(x=>x.st.key==='over'||x.st.key==='none').length
+  const certsSoon=certStates.filter(x=>x.st.key==='soon').length
+  const unverified=H.risks.filter(r=>r.status!=='verified').length
+  app.appendChild(modHero('<span class="r">FIRE</span> & H&S','Logs · certificates · risk register — 378 Coldharbour Lane',[
+    {value:H.loaded?logsBad:'–',label:'Logs due',color:logsBad?'#fb0000':'#4caf50'},
+    {value:H.loaded?certsBad:'–',label:'Certs missing / overdue',color:certsBad?'#fb0000':'#4caf50'},
+    {value:H.loaded?certsSoon:'–',label:'Certs due ≤60d',color:certsSoon?'#ff9800':'#4caf50'},
+    {value:H.loaded?unverified:'–',label:'Hazards to verify',color:unverified?'#ff9800':'#4caf50'},
+  ]))
+  app.appendChild(modTabs([{id:'overview',label:'Overview'},{id:'logs',label:'Logs'},{id:'certs',label:'Certs'},{id:'risks',label:'Risks'},{id:'print',label:'Print'}],H.tab,id=>{H.tab=id;H.justSaved=null;render()}))
+  const body=el('div','mod-body');app.appendChild(body)
+
+  if(H.loading&&!H.loaded){body.innerHTML='<div class="mod-empty">Loading…</div>';return}
+  if(H.err){
+    const b=el('div','mod-banner');b.innerHTML='<b>Database tables not set up yet.</b><br>Run <code>hs-setup.sql</code> once in the Supabase SQL editor (project → SQL), then reload this page.<br><span style="color:#888;font-size:0.7rem">'+hsEsc(H.err)+'</span>'
+    body.appendChild(b)
+    if(H.tab!=='print')return
+  }
+
+  // ---------------- OVERVIEW ----------------
+  if(H.tab==='overview'){
+    const todo=[]
+    logStates.forEach(({t,st})=>{if(st.key!=='ok')todo.push({lvl:st.key==='fail'?0:1,txt:HS_LOGTYPES[t].icon+' '+HS_LOGTYPES[t].label+' ('+HS_LOGTYPES[t].freqLabel.toLowerCase()+')',sub:st.label,cls:st.cls,go:()=>{H.tab='logs';H.draft=hsNewDraft(t);render()}})})
+    certStates.filter(x=>x.st.key==='over').forEach(({c,st})=>todo.push({lvl:0,txt:c.name,sub:st.label,cls:'red',go:()=>{H.tab='certs';H.openCert=c.id;H.certDraft={...c};render()}}))
+    certStates.filter(x=>x.st.key==='soon').forEach(({c,st})=>todo.push({lvl:2,txt:c.name,sub:st.label,cls:'amber',go:()=>{H.tab='certs';H.openCert=c.id;H.certDraft={...c};render()}}))
+    certStates.filter(x=>x.st.key==='none').forEach(({c})=>todo.push({lvl:3,txt:c.name,sub:'No date recorded — add last date',cls:'amber',go:()=>{H.tab='certs';H.openCert=c.id;H.certDraft={...c};render()}}))
+    H.risks.filter(r=>hsResidual(r).label==='HIGH'||hsResidual(r).label==='CRITICAL').forEach(r=>todo.push({lvl:0,txt:'Risk: '+r.hazard,sub:'Residual '+hsResidual(r).label+' — needs action and a date',cls:'red',go:()=>{H.tab='risks';H.openRisk=r.id;H.riskDraft={...r};render()}}))
+    if(unverified)todo.push({lvl:2,txt:'Risk register is a template',sub:unverified+' hazards not yet verified on site',cls:'amber',go:()=>{H.tab='risks';render()}})
+    todo.sort((a,b)=>a.lvl-b.lvl)
+    if(!todo.length){const b=el('div','mod-banner green');b.textContent='Nothing overdue. Keep the weekly logs going.';body.appendChild(b)}
+    else{
+      const hd=el('div','mod-section-hdr');hd.textContent='Needs attention ('+todo.length+')';body.appendChild(hd)
+      todo.forEach(t=>{
+        const c=el('div','mod-card '+(t.cls==='red'?'high':t.cls==='amber'?'warn':'ok'));c.onclick=t.go
+        const h=el('div','mod-card-hdr');const l=el('div');const ti=el('div','mod-card-title');ti.textContent=t.txt;const su=el('div','mod-card-sub');su.textContent=t.sub
+        l.appendChild(ti);l.appendChild(su);h.appendChild(l);c.appendChild(h);body.appendChild(c)
+      })
+    }
+    const b2=el('div','mod-card');b2.onclick=()=>{G.screen='fire';render()}
+    b2.innerHTML='<div class="mod-card-hdr"><div><div class="mod-card-title">🔥 Full fire risk assessment (PAS 79)</div><div class="mod-card-sub">The room-by-room fire assessment lives in the Fire Safety card. Complete it, then print it for tab 1 of the binder.</div></div></div>'
+    body.appendChild(b2)
+    const ins=el('div','mod-banner amber');ins.style.marginTop='14px'
+    ins.innerHTML='<b>Legal minimum if the fire brigade or HSE visit:</b> written fire risk assessment, written general risk assessment, alarm/emergency light/extinguisher service certificates, weekly alarm test and walk-round logs, a fire drill within 12 months, staff fire training records, gas and electrical certificates, and employers liability insurance on display.'
+    body.appendChild(ins)
+  }
+
+  // ---------------- LOGS ----------------
+  if(H.tab==='logs'){
+    const d=H.draft,T=HS_LOGTYPES[d.log_type]
+    const sel=el('div');sel.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:14px'
+    HS_LOGORDER.forEach(t=>{
+      const st=hsLogState(t);const b=el('button');b.type='button'
+      const on=d.log_type===t
+      b.style.cssText='text-align:left;padding:10px 12px;cursor:pointer;background:'+(on?'#140000':'#0a0a0a')+';border:1px solid '+(on?'#fb0000':'#1a1a1a')+';color:#fff'
+      b.innerHTML='<div style="font-size:1.1rem">'+HS_LOGTYPES[t].icon+'</div><div style="font-weight:800;font-size:0.74rem;letter-spacing:1px;text-transform:uppercase;margin-top:2px">'+hsEsc(HS_LOGTYPES[t].label)+'</div><div style="font-size:0.62rem;margin-top:3px;color:'+(st.cls==='red'?'#fb0000':'#4caf50')+'">'+hsEsc(st.label)+'</div>'
+      b.onclick=()=>{H.draft=hsNewDraft(t);H.justSaved=null;render()}
+      sel.appendChild(b)
+    })
+    body.appendChild(sel)
+    if(H.justSaved===d.log_type){const jb=el('div','mod-banner green');jb.textContent='Saved. '+T.label+' logged.';body.appendChild(jb)}
+
+    const form=el('div','mod-form')
+    const hdr=el('div','mod-section-hdr');hdr.style.marginTop='0';hdr.textContent=T.label+' — '+T.freqLabel+' · '+T.ref;form.appendChild(hdr)
+    const g=el('div','mod-form-grid')
+    g.appendChild(modField('Date',modInput(d.log_date,v=>{d.log_date=v},'','date')))
+    g.appendChild(modField('Done by (name)',modInput(d.done_by,v=>{d.done_by=v},'Your name')))
+    form.appendChild(g)
+    const cl=el('div');cl.style.margin='8px 0'
+    T.items.forEach((txt,i)=>{
+      const row=el('label','mod-checkbox')
+      const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!d.items[i]
+      cb.onchange=()=>{d.items[i]=cb.checked}
+      const sp=el('span','mod-checkbox-lbl');sp.textContent=txt
+      row.appendChild(cb);row.appendChild(sp);cl.appendChild(row)
+    })
+    form.appendChild(cl)
+    form.appendChild(modField(T.extraLabel,modInput(d.extra,v=>{d.extra=v},T.extraPh),true))
+    form.appendChild(modField('Action taken (required if anything is not ticked)',modTextarea(d.action,v=>{d.action=v},'What was done about it, who was told, when it will be fixed'),true))
+    form.appendChild(modField('Notes',modTextarea(d.notes,v=>{d.notes=v},''),true))
+    const act=el('div','mod-actions')
+    const sv=el('button','mod-btn');sv.textContent=H.saving?'Saving…':'Save log';sv.disabled=H.saving;sv.onclick=hsSaveLog;act.appendChild(sv)
+    form.appendChild(act);body.appendChild(form)
+
+    const hh=el('div','mod-section-hdr');hh.textContent='Recent '+T.label.toLowerCase()+' entries';body.appendChild(hh)
+    const rows=H.logs.filter(x=>x.log_type===d.log_type)
+    if(!rows.length){const e=el('div','mod-empty');e.textContent='None logged yet';body.appendChild(e)}
+    rows.slice(0,12).forEach(r=>{
+      const c=el('div','mod-card '+(r.pass?'ok':'high'));c.style.cursor='default'
+      const h=el('div','mod-card-hdr');const l=el('div')
+      const ti=el('div','mod-card-title');ti.textContent=fmtDate(r.log_date)+' · '+(r.done_by||'—')
+      const su=el('div','mod-card-sub');su.textContent=[r.extra,r.action,r.notes].filter(Boolean).join(' · ')||'All items OK'
+      l.appendChild(ti);l.appendChild(su);h.appendChild(l)
+      const rt=el('div');rt.style.cssText='display:flex;gap:8px;align-items:center'
+      rt.appendChild(hsPill(r.pass?'✓ Pass':'✕ Issue',r.pass?'green':'red'))
+      const del=el('button','pest-del-btn');del.textContent='✕';del.title='Delete';del.onclick=()=>hsDeleteLog(r.id);rt.appendChild(del)
+      h.appendChild(rt);c.appendChild(h);body.appendChild(c)
+    })
+    const pa=el('div','mod-actions')
+    const p1=el('button','mod-btn mod-btn-out');p1.textContent='Print history';p1.onclick=()=>hsPrint(hsLogHistory(d.log_type,rows.slice().reverse()));pa.appendChild(p1)
+    const p2=el('button','mod-btn mod-btn-out');p2.textContent='Print blank sheet';p2.onclick=()=>hsPrint(d.log_type==='drill'?hsBlankDrill():hsBlankLog(d.log_type));pa.appendChild(p2)
+    body.appendChild(pa)
+  }
+
+  // ---------------- CERTIFICATES ----------------
+  if(H.tab==='certs'){
+    const top=el('div','mod-actions');top.style.marginTop='0'
+    const add=el('button','mod-btn');add.textContent='+ Add certificate';add.onclick=()=>{const id='c-'+Date.now();H.openCert=id;H.certDraft={id,cat:'Fire',name:'',months:12,ref:'',notes:'',provider:'',cert_ref:'',last_done:'',__new:true};render()};top.appendChild(add)
+    const pr=el('button','mod-btn mod-btn-out');pr.textContent='Print register';pr.onclick=()=>hsPrint(hsCertRegister(H.certs.map(c=>({...c,next_due:hsCertNext(c)}))));top.appendChild(pr)
+    body.appendChild(top)
+    const cats=[...new Set(HS_CERT_CATS.concat(H.certs.map(c=>c.cat)))]
+    const draftNew=H.certDraft&&H.certDraft.__new?[H.certDraft]:[]
+    cats.forEach(cat=>{
+      const list=H.certs.filter(c=>c.cat===cat).concat(draftNew.filter(c=>c.cat===cat))
+      if(!list.length)return
+      const hd=el('div','mod-section-hdr');hd.textContent=cat;body.appendChild(hd)
+      list.forEach(c0=>{
+        const isOpen=H.openCert===c0.id
+        const c=isOpen&&H.certDraft?H.certDraft:c0
+        const st=hsCertState(c0)
+        const card=el('div','mod-card '+(st.cls==='red'?'high':st.cls==='amber'?'warn':'ok'))
+        const h=el('div','mod-card-hdr');h.onclick=()=>{if(isOpen){H.openCert=null;H.certDraft=null}else{H.openCert=c0.id;H.certDraft={...c0}};render()}
+        const l=el('div');const ti=el('div','mod-card-title');ti.textContent=c0.name||'New certificate'
+        const su=el('div','mod-card-sub');su.textContent=(c0.last_done?'Last '+fmtDate(c0.last_done)+' · next '+fmtDate(hsCertNext(c0)):'No date recorded')+(c0.provider?' · '+c0.provider:'')
+        l.appendChild(ti);l.appendChild(su);h.appendChild(l);h.appendChild(hsPill(st.label,st.cls));card.appendChild(h)
+        if(isOpen){
+          const f=el('div');f.style.marginTop='10px';f.onclick=e=>e.stopPropagation()
+          if(c0.ref||c0.notes){const n=el('div','mod-card-body');n.textContent=[c0.ref,c0.notes].filter(Boolean).join(' — ');f.appendChild(n)}
+          const g=el('div','mod-form-grid')
+          if(c.__new){g.appendChild(modField('Name',modInput(c.name,v=>{c.name=v},'Certificate / inspection')));g.appendChild(modField('Type',modSelect(c.cat,HS_CERT_CATS.map(x=>[x,x]),v=>{c.cat=v})))}
+          g.appendChild(modField('Last done / issued',modInput(c.last_done||'',v=>{c.last_done=v},'','date')))
+          g.appendChild(modField('Repeat every (months, 0 = none)',modInput(String(c.months||0),v=>{c.months=v},'12','number')))
+          g.appendChild(modField('Done by (company / engineer)',modInput(c.provider||'',v=>{c.provider=v},'')))
+          g.appendChild(modField('Certificate / reference no.',modInput(c.cert_ref||'',v=>{c.cert_ref=v},'')))
+          f.appendChild(g)
+          f.appendChild(modField('Notes',modTextarea(c.notes||'',v=>{c.notes=v},''),true))
+          const a=el('div','mod-actions')
+          const s=el('button','mod-btn');s.textContent=H.saving?'Saving…':'Save';s.onclick=()=>{if(!c.name.trim()){alert('Add a name');return}const x={...c};delete x.__new;hsSaveCert(x)};a.appendChild(s)
+          if(!c.__new){const d2=el('button','mod-btn mod-btn-out');d2.textContent='Delete';d2.onclick=async()=>{if(!confirm('Delete this certificate?'))return;await db.from('hs_certs').delete().eq('id',c0.id);H.certs=H.certs.filter(x=>x.id!==c0.id);H.openCert=null;H.certDraft=null;render()};a.appendChild(d2)}
+          f.appendChild(a);card.appendChild(f)
+        }
+        body.appendChild(card)
+      })
+    })
+  }
+
+  // ---------------- RISKS ----------------
+  if(H.tab==='risks'){
+    const ver=H.risks.filter(r=>r.status==='verified').length
+    const bn=el('div','mod-banner '+(ver===H.risks.length&&ver?'green':'amber'))
+    bn.innerHTML=ver===H.risks.length&&ver?'All '+ver+' hazards verified on site.':'<b>Template, not yet your assessment.</b> '+(H.risks.length-ver)+' of '+H.risks.length+' hazards are typical chip-shop/bar hazards. Walk the premises, check each control is genuinely in place, edit what is wrong, add what is missing, then mark each hazard "Verified".'
+    body.appendChild(bn)
+    const fl=el('div');fl.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px'
+    ;[['all','All']].concat(Object.entries(HS_AREAS)).forEach(([k,lbl])=>{
+      const b=el('button','pest-filter-btn'+(H.riskArea===k?' on':''));b.textContent=lbl;b.onclick=()=>{H.riskArea=k;render()};fl.appendChild(b)
+    })
+    body.appendChild(fl)
+    const top=el('div','mod-actions');top.style.marginTop='0'
+    const add=el('button','mod-btn');add.textContent='+ Add hazard';add.onclick=()=>{const id='h-'+Date.now();H.openRisk=id;H.riskDraft={id,area:'kitchen',hazard:'',who:'',l:3,s:3,rl:2,rs:3,controls:'',owner:'',review_date:'',status:'draft',notes:'',__new:true};render()};top.appendChild(add)
+    const pr=el('button','mod-btn mod-btn-out');pr.textContent='Print risk assessment';pr.onclick=()=>hsPrint(hsRiskDoc(H.risks,{assessor:'',date:todayStr()}));top.appendChild(pr)
+    body.appendChild(top)
+    let list=H.risks.slice()
+    if(H.riskDraft&&H.riskDraft.__new)list.unshift(H.riskDraft)
+    list=list.filter(r=>H.riskArea==='all'||r.area===H.riskArea||r.__new).sort((a,b)=>hsResidual(b).score-hsResidual(a).score)
+    list.forEach(r0=>{
+      const isOpen=H.openRisk===r0.id
+      const r=isOpen&&H.riskDraft?H.riskDraft:r0
+      const before=hsRate(r0.l,r0.s),after=hsResidual(r0)
+      const card=el('div','mod-card '+(after.label==='LOW'?'ok':after.label==='MEDIUM'?'warn':'high'))
+      const h=el('div','mod-card-hdr');h.onclick=()=>{if(isOpen){H.openRisk=null;H.riskDraft=null}else{H.openRisk=r0.id;H.riskDraft={...r0}};render()}
+      const l=el('div');const ti=el('div','mod-card-title');ti.textContent=r0.hazard||'New hazard'
+      const su=el('div','mod-card-sub');su.textContent=(HS_AREAS[r0.area]||r0.area)+' · '+(r0.who||'')+' · before '+before.score+' → after '+after.score
+      l.appendChild(ti);l.appendChild(su);h.appendChild(l)
+      const rt=el('div');rt.style.cssText='display:flex;gap:6px;align-items:center'
+      rt.appendChild(hsPill(r0.status==='verified'?'Verified':'Template',r0.status==='verified'?'green':'amber'))
+      rt.appendChild(hsPill(after.label,after.label==='LOW'?'green':after.label==='MEDIUM'?'amber':'red'))
+      h.appendChild(rt);card.appendChild(h)
+      if(isOpen){
+        const f=el('div');f.style.marginTop='10px'
+        const g=el('div','mod-form-grid')
+        g.appendChild(modField('Hazard',modInput(r.hazard,v=>{r.hazard=v},'What could hurt someone')))
+        g.appendChild(modField('Area',modSelect(r.area,Object.entries(HS_AREAS),v=>{r.area=v})))
+        g.appendChild(modField('Who is at risk',modInput(r.who||'',v=>{r.who=v},'')))
+        g.appendChild(modField('Responsible person',modInput(r.owner||'',v=>{r.owner=v},'Name')))
+        f.appendChild(g)
+        const sc=el('div');sc.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0'
+        sc.appendChild(hsScoreRow('Likelihood BEFORE controls (1 rare – 5 almost certain)',r.l,n=>{r.l=n}))
+        sc.appendChild(hsScoreRow('Severity BEFORE controls (1 minor – 5 fatal)',r.s,n=>{r.s=n}))
+        sc.appendChild(hsScoreRow('Likelihood AFTER controls',r.rl,n=>{r.rl=n}))
+        sc.appendChild(hsScoreRow('Severity AFTER controls',r.rs,n=>{r.rs=n}))
+        f.appendChild(sc)
+        f.appendChild(modField('Controls (one per line)',modTextarea(r.controls||'',v=>{r.controls=v},'One control per line'),true))
+        f.appendChild(modField('Notes / further action needed',modTextarea(r.notes||'',v=>{r.notes=v},''),true))
+        f.appendChild(modField('Next review date',modInput(r.review_date||'',v=>{r.review_date=v},'','date')))
+        const vr=el('label','mod-checkbox');const cb=document.createElement('input');cb.type='checkbox';cb.checked=r.status==='verified';cb.onchange=()=>{r.status=cb.checked?'verified':'draft'}
+        const sp=el('span','mod-checkbox-lbl');sp.textContent='Verified on site — every control listed is genuinely in place';vr.appendChild(cb);vr.appendChild(sp);f.appendChild(vr)
+        const a=el('div','mod-actions')
+        const s=el('button','mod-btn');s.textContent=H.saving?'Saving…':'Save hazard';s.onclick=()=>{if(!(r.hazard||'').trim()){alert('Describe the hazard');return}const x={...r};delete x.__new;hsSaveRisk(x)};a.appendChild(s)
+        if(!r.__new){const d2=el('button','mod-btn mod-btn-out');d2.textContent='Delete';d2.onclick=()=>hsDeleteRisk(r0.id);a.appendChild(d2)}
+        f.appendChild(a);card.appendChild(f)
+      }
+      body.appendChild(card)
+    })
+  }
+
+  // ---------------- PRINT ----------------
+  if(H.tab==='print'){
+    const mk=(title,sub,fn)=>{
+      const c=el('div','mod-card');c.onclick=fn
+      c.innerHTML='<div class="mod-card-hdr"><div><div class="mod-card-title">🖨 '+hsEsc(title)+'</div><div class="mod-card-sub">'+hsEsc(sub)+'</div></div></div>';body.appendChild(c)
+    }
+    const hd=(t)=>{const h=el('div','mod-section-hdr');h.textContent=t;body.appendChild(h)}
+    const hint=el('div','mod-banner amber');hint.textContent='In the print window choose A4 and, for the best result, turn "Headers and footers" off. Landscape sheets switch automatically.';body.appendChild(hint)
+    hd('Filled from the hub')
+    mk('Risk assessment','Current hazards, scores and controls with sign-off boxes',()=>hsPrint(hsRiskDoc(H.risks,{assessor:'',date:todayStr()})))
+    mk('Certificate register','All certificates with last and next due dates',()=>hsPrint(hsCertRegister(H.certs.map(c=>({...c,next_due:hsCertNext(c)})))))
+    HS_LOGORDER.forEach(t=>mk(HS_LOGTYPES[t].label+' — history','Everything logged so far',()=>hsPrint(hsLogHistory(t,H.logs.filter(x=>x.log_type===t).reverse()))))
+    hd('Blank sheets for the binder')
+    HS_LOGORDER.filter(t=>t!=='drill').forEach(t=>mk(HS_LOGTYPES[t].label+' log (blank)',HS_LOGTYPES[t].freqLabel+' paper log',()=>hsPrint(hsBlankLog(t))))
+    mk('Fire drill record','One drill per page',()=>hsPrint(hsBlankDrill()))
+    mk('Accident / incident report','Print a few',()=>hsPrint(hsBlankAccident()))
+    mk('Fire action notice','Display by each exit',()=>hsPrint(hsFireAction()))
+    mk('Staff safety induction record','One per new starter',()=>hsPrint(hsInduction()))
+    mk('Emergency shut-offs and contacts','Fill in once',()=>hsPrint(hsContacts()))
+    mk('Whole binder pack (blank)','Cover, index, dividers, inspector checklist and every blank sheet',()=>hsPrint(hsBlankPack()))
+  }
 }
 
 // ============================================================
