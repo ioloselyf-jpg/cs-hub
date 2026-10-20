@@ -601,7 +601,7 @@ let G={
   // Compliance
   comp:{tab:'food',openSecs:{},checked:{},actuals:{},costOpen:true},
   // Temps
-  temps:{tab:'kitchen',session:'Opening',staffName:'',readings:{},actions:{},submitted:{},unitHist:{},histFrom:'',histTo:'',histArea:'all',histLoaded:false,histLoading:false,histRows:[],calDraft:{probe_name:'',ice_temp:'',boil_temp:'',staff_name:'',notes:'',corrective_action:''},calItems:[],calLoaded:false,calLoading:false,calSaving:false},
+  temps:{tab:'bar',session:'Opening',staffName:'',readings:{},actions:{},submitted:{},unitHist:{},histFrom:'',histTo:'',histArea:'all',histLoaded:false,histLoading:false,histRows:[],calDraft:{probe_name:'',ice_temp:'',boil_temp:'',staff_name:'',notes:'',corrective_action:''},calItems:[],calLoaded:false,calLoading:false,calSaving:false},
   // Fire
   fire:{tab:'assess',openSecs:{premises:true},responses:{},premNotes:{},assessorName:'',assessorRole:'',assessorDate:todayStr(),reviewDate:'',files:{},scanning:false,scanErr:null,saving:false},
   // Training
@@ -1175,17 +1175,18 @@ async function toggleCheck(id){
 // ============================================================
 // ============ TEMPS ============
 // ============================================================
+// Kitchen units retired from daily logging (Oct 2026 — kitchen run by Patois). Kept with retired:true so past readings in History still resolve.
 const UNITS=[
   {id:'b-1',name:'Main Fridge - Bar',num:1,area:'bar',type:'fridge',max:5,legalMax:8,warn:7,note:'Keep below 7°C'},
   {id:'b-2',name:'Redbull - Bar',num:2,area:'bar',type:'fridge',max:8,legalMax:8,warn:7,note:'Keep below 7°C'},
   {id:'b-3',name:'Chest Freezer - Cellar',num:3,area:'bar',type:'freezer',max:-17,legalMax:-18,warn:-14,note:'Keep at or below -17°C'},
   {id:'b-4',name:'Lower Mini Fridge - Cellar',num:4,area:'bar',type:'fridge',max:5,legalMax:8,warn:7,note:'Keep below 7°C'},
-  {id:'b-5',name:'Middle Mini Fridge - Bar',num:5,area:'bar',type:'fridge',max:5,legalMax:8,warn:7,note:'Keep below 7°C'},
+  {id:'b-5',name:'Middle Mini Fridge - Cellar',num:5,area:'bar',type:'fridge',max:5,legalMax:8,warn:7,note:'Keep below 7°C'},
   {id:'b-6',name:'Upper Mini Fridge - Cellar',num:6,area:'bar',type:'fridge',max:5,legalMax:8,warn:7,note:'Keep below 7°C'},
-  {id:'k-7',name:'Veg/RTE - Pass',num:7,area:'kitchen',type:'fridge',max:5,legalMax:8,warn:7,note:'Keep below 7°C'},
-  {id:'k-8',name:'Raw Meat - Kitchen',num:8,area:'kitchen',type:'fridge',max:5,legalMax:8,warn:7,note:'Raw meat — keep below 7°C'},
-  {id:'k-9',name:'Cooked Meat - Kitchen',num:9,area:'kitchen',type:'fridge',max:5,legalMax:8,warn:7,note:'Keep below 7°C'},
-  {id:'k-10',name:'Kitchen Freezer',num:10,area:'kitchen',type:'freezer',max:-18,legalMax:-18,warn:-15,note:'Keep at or below -18°C'},
+  {id:'k-7',retired:true,name:'Veg/RTE - Pass',num:7,area:'kitchen',type:'fridge',max:5,legalMax:8,warn:7,note:'Keep below 7°C'},
+  {id:'k-8',retired:true,name:'Raw Meat - Kitchen',num:8,area:'kitchen',type:'fridge',max:5,legalMax:8,warn:7,note:'Raw meat — keep below 7°C'},
+  {id:'k-9',retired:true,name:'Cooked Meat - Kitchen',num:9,area:'kitchen',type:'fridge',max:5,legalMax:8,warn:7,note:'Keep below 7°C'},
+  {id:'k-10',retired:true,name:'Kitchen Freezer',num:10,area:'kitchen',type:'freezer',max:-18,legalMax:-18,warn:-15,note:'Keep at or below -18°C'},
 ]
 
 function getTempStatus(unit,val){
@@ -1199,7 +1200,7 @@ function renderTemps(app){
   const T=G.temps
   const h=new Date().getHours()
   if(!T.session)T.session=h<11?'Opening':h<16?'Midday':'Closing'
-  const units=UNITS.filter(u=>u.area===T.tab)
+  const units=UNITS.filter(u=>u.area===T.tab&&!u.retired)
   const logged=units.filter(u=>T.submitted[u.id]).length
 
   // Hero
@@ -1227,9 +1228,9 @@ function renderTemps(app){
 
   // Tabs
   const tabs=el('div','tabs')
-  ;[['kitchen','🍳 Kitchen'],['bar','🍺 Bar']].forEach(([key,label])=>{
+  ;[['bar','🍺 Bar']].forEach(([key,label])=>{
     const t=el('button','tab'+(T.tab===key?' on':''))
-    const items=UNITS.filter(u=>u.area===key)
+    const items=UNITS.filter(u=>u.area===key&&!u.retired)
     const d=items.filter(u=>T.submitted[u.id]).length
     t.innerHTML=`${label}<span class="tab-ct">${d}/${items.length} logged</span>`
     t.onclick=()=>{T.tab=key;render()};tabs.appendChild(t)
